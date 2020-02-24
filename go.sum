@@ -1,0 +1,6 @@
+github.com/andlabs/ui v0.0.0-20180902183112-867a9e5a498d h1:4ianvxb8s3oyizgjuWWxGuTAUU+6JStcvj6BuHS4PVY=
+github.com/andlabs/ui v0.0.0-20180902183112-867a9e5a498d/go.mod h1:5G2EjwzgZUPnnReoKvPWVneT8APYbyKkihDVAHUi0II=
+github.com/shurcooL/trayhost v0.0.0-20181020202213-114974ef9e16 h1:7EdFnfVUAu1Rv5bNVjaygc2dWu7RiZV804h3qOJtlbM=
+github.com/shurcooL/trayhost v0.0.0-20181020202213-114974ef9e16/go.mod h1:jCGK0NF4lbbRrPGyl1Eonb4Xicbeiy2Ry6okvvZWlnQ=
+github.com/ying32/govcl v1.2.7 h1:n/Oyyf4eEf4PvywscWPAcQkCYQMIPP+lmm8TMZcQCDE=
+github.com/ying32/govcl v1.2.7/go.mod h1:OV0bPMSNGlKwBkELqNeZpZw4CPPIc752u0VG2m7D0QE=
