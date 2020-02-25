@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
 	"strconv"
 )
 
-var exportEntry *ExportEntry
+var (
+	exportEntry *ExportEntry
+	extensions  = []string{".xlsx", ".xls"}
+)
 
 func exportMenu() trayhost.MenuItem {
 	return trayhost.MenuItem{
@@ -26,134 +30,150 @@ func exportOnReady(window *ui.Window) {
 		window.Hide()
 		return false
 	})
-	export := &ExportEntry{}
+	exportEntry = &ExportEntry{
+		TabEntries: make(map[int]*ui.Grid),
+	}
 	mainBox := ui.NewVerticalBox()
 	mainBox.SetPadded(true)
 
 	form := ui.NewForm()
 	form.SetPadded(true)
-	export.XLSName = ui.NewEntry()
-	form.Append("FileName", export.XLSName, false)
-	export.Extension = ui.NewCombobox()
-	export.Extension.Append(".xlsx")
-	export.Extension.Append(".xls")
-	export.Extension.SetSelected(0)
-	form.Append("Extension", export.Extension, false)
+	exportEntry.XLSName = ui.NewEntry()
+	form.Append("FileName", exportEntry.XLSName, false)
+	exportEntry.Extension = ui.NewCombobox()
+	exportEntry.Extension.Append(extensions[0])
+	exportEntry.Extension.Append(extensions[1])
+	exportEntry.Extension.SetSelected(0)
+	form.Append("Extension", exportEntry.Extension, false)
 	mainBox.Append(form, false)
 
-	group := ui.NewGroup("SQLEntries")
-	mainBox.Append(group, true)
+	exportEntry.Tab = ui.NewTab()
+	addNewTab()
+	exportEntry.Tab.SetMargined(0, true)
+	mainBox.Append(exportEntry.Tab, false)
 
-	groups := ui.NewVerticalBox()
-	groups.SetPadded(true)
-	export.Groups = groups
-
-	groups.Append(entry(1, export), false)
-	group.SetChild(groups)
-
-	btnBox := ui.NewHorizontalBox()
-	btnBox.SetPadded(true)
-	addBtn := ui.NewButton("Add Entry")
-	addBtn.OnClicked(func(button *ui.Button) {
-		groups.Append(entry(len(export.SQLEntries)+1, export), false)
-		//groups.Delete(len(export.SQLEntries) - 1)
-		//groups.Append(addBtn, false)
-	})
-	btnBox.Append(addBtn, false)
-
+	exportBtnLine := ui.NewGrid()
+	exportBtnLine.SetPadded(true)
 	exportBtn := ui.NewButton("Export")
-	exportBtn.OnClicked(func(button *ui.Button) {
-
-	})
-	btnBox.Append(exportBtn, false)
-
-	mainBox.Append(btnBox, false)
+	exportBtn.OnClicked(onExportBtnClicked)
+	exportBtnLine.Append(exportBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
+	mainBox.Append(exportBtnLine, false)
 	exportWindow.SetChild(mainBox)
-	exportEntry = export
 }
 
-func entry(entrySize int, export *ExportEntry) *ui.Group {
-	entryGroup := ui.NewGroup("Entry: " + strconv.Itoa(entrySize))
-	sqlEntry := &SQLEntry{}
+func onExportBtnClicked(button *ui.Button) {
+	defer func() {
+		if err := recover(); err != nil {
+			ui.MsgBoxError(exportWindow,
+				"Error generating Excel document.",
+				"Error details: "+fmt.Sprintf("error: %v\n", err))
+		}
+	}()
+	xlsName := exportEntry.XLSName.Text()
+	extension := extensions[exportEntry.Extension.Selected()]
+	for _, entry := range exportEntry.SQLEntries {
+		fmt.Printf("XLSName: %s, Extension: %s, URL: %s, SQL: %s, Args: %+v, Titles: %+v, SheetName: %s\n",
+			xlsName, extension, entry.URL.Text(), entry.SQL.Text(), entry.Args.Text(), entry.Titles.Text(), entry.SheetName.Text())
+	}
+}
+
+// TODO fix add and delete tab bug
+func onAddBtnClicked(button *ui.Button) {
+	// Add new TabSheet to Tab
+	index := len(exportEntry.TabEntries)
+	addNewTab()
+	exportEntry.Tab.SetMargined(index, true)
+	// AddEntry Button replace to DeleteButton
+	tl := index + exportEntry.DeletedTab
+	println("Change delete:", tl)
+	btnGrid := exportEntry.TabEntries[tl]
+	btnGrid.Delete(0)
+	delBtn := ui.NewButton("Delete")
+	delBtn.OnClicked(func(button *ui.Button) {
+		delete(exportEntry.TabEntries, index)
+		println("Grid Index:", index, "NumPages:", exportEntry.Tab.NumPages())
+		deli := index - exportEntry.DeletedTab - 1
+		if deli < 0 {
+			deli = 0
+		}
+		var temp []*SQLEntry
+		temp = append(temp, exportEntry.SQLEntries[:index-1]...)
+		temp = append(temp, exportEntry.SQLEntries[index:]...)
+		exportEntry.SQLEntries = temp
+		exportEntry.Tab.Delete(deli)
+		exportEntry.DeletedTab += 1
+	})
+	btnGrid.Append(delBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
+}
+
+func addNewTab() {
+	exportEntry.Tab.Append("Sheet-"+strconv.Itoa(len(exportEntry.SQLEntries)+1), newTabEntry())
+}
+
+func newTabEntry() *ui.Box {
 	entryBox := ui.NewVerticalBox()
 	entryBox.SetPadded(true)
+	entry := &SQLEntry{}
 	form := ui.NewForm()
 	form.SetPadded(true)
 	input := ui.NewEntry()
-	sqlEntry.URL = input
+	entry.URL = input
 	form.Append("URL", input, false)
 	input = ui.NewEntry()
-	sqlEntry.SQL = input
+	entry.SQL = input
 	form.Append("SQL", input, false)
 	input = ui.NewEntry()
-	sqlEntry.Args = input
+	entry.Args = input
 	form.Append("Args", input, false)
 	input = ui.NewEntry()
-	sqlEntry.Title = input
+	entry.Titles = input
 	form.Append("Titles", input, false)
 	input = ui.NewEntry()
-	sqlEntry.SheetName = input
+	entry.SheetName = input
 	form.Append("Sheet", input, false)
-	var delBtn *ui.Button
-	if entrySize > 1 {
-		delBtn = ui.NewButton("Delete")
-		delBtn.OnClicked(func(button *ui.Button) {
-			if len(export.SQLEntries) > 1 {
-				export.Groups.Delete(entrySize - 1)
-			}
-		})
-	}
 	entryBox.Append(form, false)
-	if delBtn != nil {
-		entryBox.Append(delBtn, false)
-	}
-	entryGroup.SetMargined(true)
-	entryGroup.SetChild(entryBox)
-	sqlEntry.Group = entryGroup
-	export.SQLEntries = append(export.SQLEntries, sqlEntry)
-	return entryGroup
+	addBtnLine := ui.NewGrid()
+	addBtnLine.SetPadded(true)
+	addBtn := ui.NewButton("Add Entry")
+	addBtn.OnClicked(onAddBtnClicked)
+	addBtnLine.Append(addBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
+	entryBox.Append(addBtnLine, false)
+	exportEntry.SQLEntries = append(exportEntry.SQLEntries, entry)
+	exportEntry.TabEntries[len(exportEntry.TabEntries)+1] = addBtnLine
+	return entryBox
 }
 
 type ExportEntry struct {
 	XLSName    *ui.Entry
 	SQLEntries []*SQLEntry
-	Groups     *ui.Box
 	Extension  *ui.Combobox
+	TabEntries map[int]*ui.Grid
+	Tab        *ui.Tab
+	DeletedTab int
 }
 
 type SQLEntry struct {
-	Group     *ui.Group
 	URL       *ui.Entry
 	SQL       *ui.Entry
 	Args      *ui.Entry
-	Title     *ui.Entry
+	Titles    *ui.Entry
 	SheetName *ui.Entry
 }
 
 func (e *ExportEntry) Clear() {
+	e.SQLEntries = e.SQLEntries[:1]
+	e.SQLEntries[0].URL.SetText("")
+	e.SQLEntries[0].SQL.SetText("")
+	e.SQLEntries[0].Args.SetText("")
+	e.SQLEntries[0].Titles.SetText("")
+	e.SQLEntries[0].SheetName.SetText("")
+	e.TabEntries = make(map[int]*ui.Grid)
+	e.DeletedTab = 0
 	if e.Extension != nil {
 		e.Extension.SetSelected(0)
 	}
 	if e.XLSName != nil {
 		e.XLSName.SetText("")
 	}
-	if len(e.SQLEntries) > 1 {
-		sqlEntry := e.SQLEntries[0]
-		sqlEntry.SheetName.SetText("")
-		sqlEntry.Title.SetText("")
-		sqlEntry.Args.SetText("")
-		sqlEntry.SQL.SetText("")
-		sqlEntry.URL.SetText("")
-	}
-	if e.Groups != nil && len(e.SQLEntries) > 1 {
-		for i := 1; i < len(e.SQLEntries); {
-			e.Groups.Delete(i)
-			temp := make([]*SQLEntry, 0)
-			temp = append(temp, e.SQLEntries[:1]...)
-			if len(e.SQLEntries) >= 2 {
-				temp = append(temp, e.SQLEntries[2:]...)
-			}
-			e.SQLEntries = temp
-		}
-	}
+	// TODO exportEntry.Tab clear
 }
