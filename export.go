@@ -62,12 +62,14 @@ func exportOnReady(window *ui.Window) {
 }
 
 func onExportBtnClicked(button *ui.Button) {
+	button.Disable()
 	defer func() {
 		if err := recover(); err != nil {
 			ui.MsgBoxError(exportWindow,
 				"Error generating Excel document.",
 				"Error details: "+fmt.Sprintf("error: %v\n", err))
 		}
+		button.Enable()
 	}()
 	xlsName := exportEntry.XLSName.Text()
 	extension := extensions[exportEntry.Extension.Selected()]
