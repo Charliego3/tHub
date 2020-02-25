@@ -23,3 +23,7 @@ func getClipboard() (string, error) {
 func setClipboard(text string) {
 	trayhost.SetClipboardText(text)
 }
+
+type Window interface {
+	Clear()
+}

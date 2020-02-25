@@ -10,7 +10,7 @@ var base64Entry *EncryptEntry
 
 func base64MenuItem() trayhost.MenuItem {
 	return trayhost.MenuItem{
-		Title: "Base64 Encrypt",
+		Title: base64Window.Title(),
 		Handler: func() {
 			base64Window.Show()
 			base64Entry.Clear()

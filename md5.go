@@ -11,7 +11,7 @@ var md5Entry *EncryptEntry
 
 func md5MenuItem() trayhost.MenuItem {
 	return trayhost.MenuItem{
-		Title: "MD5 Encrypt",
+		Title: md5Window.Title(),
 		Handler: func() {
 			md5Window.Show()
 			if md5Entry != nil {
