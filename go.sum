@@ -1,3 +1,7 @@
+github.com/ProtonMail/ui v0.0.0-20161016113511-e2f5304f29b1 h1:+kE7tXgAo+at3qLOiBDUO5Q+T5MLLQoag0v247R5CRY=
+github.com/ProtonMail/ui v0.0.0-20161016113511-e2f5304f29b1/go.mod h1:/6zSjqsJ14wZ9xb75WJCUQr9rycJx/xpzfBZlKA4B34=
+github.com/andlabs/ui v0.0.0-20150417003328-e34c561ed5be h1:VtMGe/C/oiJXY9UvE3COaD3P+675LsDFBqyBxx6fBMM=
+github.com/andlabs/ui v0.0.0-20150417003328-e34c561ed5be/go.mod h1:5G2EjwzgZUPnnReoKvPWVneT8APYbyKkihDVAHUi0II=
 github.com/andlabs/ui v0.0.0-20180902183112-867a9e5a498d h1:4ianvxb8s3oyizgjuWWxGuTAUU+6JStcvj6BuHS4PVY=
 github.com/andlabs/ui v0.0.0-20180902183112-867a9e5a498d/go.mod h1:5G2EjwzgZUPnnReoKvPWVneT8APYbyKkihDVAHUi0II=
 github.com/shurcooL/trayhost v0.0.0-20181020202213-114974ef9e16 h1:7EdFnfVUAu1Rv5bNVjaygc2dWu7RiZV804h3qOJtlbM=
