@@ -8,7 +8,7 @@ import (
 )
 
 func createWindow(title string, width, height int) *ui.Window {
-	window := ui.NewWindow(title, width, height, true)
+	window := ui.NewWindow(title, width, height, false)
 	window.Center()
 	window.SetMargined(true)
 	return window

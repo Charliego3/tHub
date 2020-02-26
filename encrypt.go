@@ -17,6 +17,7 @@ func encrypt(window *ui.Window, f func(text string) string) *EncryptEntry {
 	form := ui.NewForm()
 	form.SetPadded(true)
 	entry.Resource = ui.NewEntry()
+	winResize(entry.Resource, window)
 	entry.Resource.SetReadOnly(true)
 	form.Append("Resource", entry.Resource, true)
 	line.Append(form, true)
@@ -77,6 +78,7 @@ func encrypt(window *ui.Window, f func(text string) string) *EncryptEntry {
 			entry.ResultLine.Delete(1)
 		}
 		entry.Result = ui.NewEntry()
+		winResize(entry.Result, window)
 		entry.Result.SetReadOnly(true)
 		entry.ResultLine.Append(entry.Result, true)
 		entry.Result.SetText(rs)
@@ -99,6 +101,14 @@ func encrypt(window *ui.Window, f func(text string) string) *EncryptEntry {
 
 	window.SetChild(vbox)
 	return entry
+}
+
+func winResize(entry *ui.Entry, window *ui.Window) {
+	entry.OnChanged(func(entry *ui.Entry) {
+		entry.Text()
+		window.Handle()
+		window.SetContentSize(480, 84)
+	})
 }
 
 type EncryptEntry struct {

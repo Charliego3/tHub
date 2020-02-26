@@ -24,7 +24,11 @@ func base64OnReady(window *ui.Window) {
 		return base64.RawStdEncoding.EncodeToString([]byte(text))
 	})
 	base64Window.OnClosing(func(window *ui.Window) bool {
-		base64Entry.ResultLine.Hide()
+		if base64Entry.ResultLine != nil {
+			base64Entry.ResultLine.Hide()
+			window.Handle()
+			window.SetContentSize(480, 84)
+		}
 		window.Hide()
 		return false
 	})

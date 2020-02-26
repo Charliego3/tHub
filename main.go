@@ -13,9 +13,9 @@ var (
 
 func main() {
 	_ = ui.Main(func() {
-		md5OnReady(createWindow("MD5 Encrypt", 480, 115))
-		base64OnReady(createWindow("Base64 Encrypt", 480, 115))
-		exportOnReady(createWindow("Export Excel From MySQL", 600, 115))
+		md5OnReady(createWindow("MD5 Encrypt", 480, 84))
+		base64OnReady(createWindow("Base64 Encrypt", 480, 84))
+		exportOnReady(createWindow("Export Excel From MySQL", 608, 115))
 		menus()
 	})
 }

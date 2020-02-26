@@ -29,7 +29,11 @@ func md5OnReady(window *ui.Window) {
 		return hex.EncodeToString(h.Sum(nil))
 	})
 	md5Window.OnClosing(func(window *ui.Window) bool {
-		md5Entry.ResultLine.Hide()
+		if md5Entry.ResultLine != nil {
+			md5Entry.ResultLine.Hide()
+		}
+		window.Handle()
+		window.SetContentSize(480, 84)
 		window.Hide()
 		return false
 	})

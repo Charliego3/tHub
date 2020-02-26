@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 var (
+	sheetCount  int
 	exportEntry *ExportEntry
 	extensions  = []string{".xlsx", ".xls"}
 	prompts     = []string{
@@ -39,7 +41,10 @@ func exportOnReady(window *ui.Window) {
 		window.Hide()
 		return false
 	})
-	exportEntry = &ExportEntry{}
+	exportEntry = &ExportEntry{
+		SheetTab:   make(map[int]int),
+		BuildEntry: &BuildEntry{},
+	}
 	mainBox := ui.NewVerticalBox()
 	mainBox.SetPadded(true)
 
@@ -61,7 +66,7 @@ func exportOnReady(window *ui.Window) {
 		if filename == "" {
 			filename = defaultDownload
 		}
-		if strings.HasSuffix(filename, "/Untitled") {
+		if strings.HasSuffix(filename, "/"+Untitled) {
 			filename = filename[:strings.LastIndex(filename, "/")]
 		}
 		savePath.SetText(filename)
@@ -144,18 +149,137 @@ func prompt(mainBox *ui.Box) {
 		if index == 0 {
 			box := ui.NewHorizontalBox()
 			box.SetPadded(true)
-			label := ui.NewLabel(p)
-			button := ui.NewButton(BuildURL)
-			button.OnClicked(func(button *ui.Button) {
-				// TODO Build URL window
-			})
-			box.Append(label, false)
-			box.Append(button, false)
 			mainBox.Append(box, false)
+			label := ui.NewLabel(p)
+			exportEntry.BuildURLBtn = ui.NewButton(BuildURL)
+			// Build MySQL Connection URL
+			urlBox := ui.NewVerticalBox()
+			urlBox.SetPadded(true)
+			exportEntry.BuildURLWin = ui.NewGroup("Build MySQL Connection URL")
+			exportEntry.BuildURLWin.SetMargined(true)
+			form := ui.NewForm()
+			form.SetPadded(true)
+			exportEntry.BuildEntry.Host = ui.NewEntry()
+			exportEntry.BuildEntry.Host.SetText("127.0.0.1")
+			resize(exportEntry.BuildEntry.Host)
+			form.Append("Host", exportEntry.BuildEntry.Host, false)
+			exportEntry.BuildEntry.Port = ui.NewEntry()
+			exportEntry.BuildEntry.Port.SetText("3306")
+			resize(exportEntry.BuildEntry.Port)
+			form.Append("Port", exportEntry.BuildEntry.Port, false)
+			exportEntry.BuildEntry.User = ui.NewEntry()
+			exportEntry.BuildEntry.User.SetText("root")
+			resize(exportEntry.BuildEntry.User)
+			form.Append("User", exportEntry.BuildEntry.User, false)
+			exportEntry.BuildEntry.Pwd = ui.NewPasswordEntry()
+			resize(exportEntry.BuildEntry.Pwd)
+			form.Append("Password", exportEntry.BuildEntry.Pwd, false)
+			exportEntry.BuildEntry.Db = ui.NewEntry()
+			resize(exportEntry.BuildEntry.Db)
+			form.Append("Database", exportEntry.BuildEntry.Db, false)
+			exportEntry.BuildEntry.Charset = ui.NewCombobox()
+			for _, m := range charsets {
+				for k, v := range m {
+					exportEntry.BuildEntry.Charset.Append(k + " - " + v)
+				}
+			}
+			exportEntry.BuildEntry.Charset.SetSelected(0)
+			form.Append("Charset", exportEntry.BuildEntry.Charset, false)
+			urlBox.Append(form, false)
+			genBtn := ui.NewButton("Generate")
+			genBtn.OnClicked(onURLGenBtnClicked)
+			closeBtn := ui.NewButton("Close")
+			closeBtn.OnClicked(closeBuildPanel)
+			buildLine := ui.NewHorizontalBox()
+			buildLine.SetPadded(true)
+			padding := ui.NewLabel("")
+			buildLine.Append(padding, true)
+			buildLine.Append(closeBtn, false)
+			buildLine.Append(genBtn, false)
+			urlBox.Append(buildLine, false)
+
+			exportEntry.BuildURLWin.SetChild(urlBox)
+			exportEntry.BuildURLWin.Hide()
+			mainBox.Append(exportEntry.BuildURLWin, false)
+			exportEntry.BuildURLBtn.OnClicked(onBuildURLBtnClicked)
+			box.Append(label, false)
+			box.Append(exportEntry.BuildURLBtn, false)
 		} else {
 			mainBox.Append(ui.NewLabel(p), false)
 		}
 	}
+}
+
+func onURLGenBtnClicked(button *ui.Button) {
+	host := exportEntry.BuildEntry.Host.Text()
+	var reg = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$`)
+	if !reg.MatchString(host) {
+		showGenErrMsg("Please enter the correct IP address")
+		return
+	}
+	port := exportEntry.BuildEntry.Port.Text()
+	msg := "Please enter the correct port number"
+	if !valid(port, msg) {
+		return
+	}
+	p, err := strconv.Atoi(port)
+	if err != nil || p > 65535 {
+		showGenErrMsg(msg)
+		return
+	}
+	user := exportEntry.BuildEntry.User.Text()
+	if !valid(user, "Please enter the correct MySQL username") {
+		return
+	}
+	pwd := exportEntry.BuildEntry.Pwd.Text()
+	if !valid(pwd, "MySQL password cannot be empty") {
+		return
+	}
+	db := exportEntry.BuildEntry.Db.Text()
+	if !valid(db, "") {
+		return
+	}
+	var charset string
+	for k := range charsets[exportEntry.BuildEntry.Charset.Selected()] {
+		charset = k
+	}
+	url := fmt.Sprintf(URLFormat, user, pwd, host, port, db, charset)
+	for _, e := range exportEntry.SQLEntries {
+		e.URL.SetText(url)
+	}
+	closeBuildPanel(button)
+}
+
+func closeBuildPanel(button *ui.Button) {
+	exportEntry.BuildURLBtn.Show()
+	exportEntry.BuildURLWin.Hide()
+	exportWindow.Handle()
+	exportWindow.SetContentSize(608, 115)
+}
+
+func resize(entry *ui.Entry) {
+	entry.OnChanged(func(entry *ui.Entry) {
+		entry.Text()
+		exportWindow.Handle()
+		exportWindow.SetContentSize(608, 115)
+	})
+}
+
+func valid(text, msg string) bool {
+	if text == "" {
+		showGenErrMsg(msg)
+		return false
+	}
+	return true
+}
+
+func showGenErrMsg(msg string) {
+	ui.MsgBox(exportWindow, "Generate URL parameter error.", msg)
+}
+
+func onBuildURLBtnClicked(button *ui.Button) {
+	button.Hide()
+	exportEntry.BuildURLWin.Show()
 }
 
 func onExportBtnClicked(button *ui.Button) {
@@ -176,23 +300,41 @@ func onExportBtnClicked(button *ui.Button) {
 	}
 }
 
-// TODO fix add and delete tab bug
-func onAddBtnClicked(index int) {
+func onAddSheetBtnClicked(index int) {
 	// Add new TabSheet to Tab
 	addNewTab()
-	exportEntry.Tab.SetMargined(index, true)
+	fmt.Printf("Add Index: %d, SheetTab: %+v\n", index, exportEntry.SheetTab)
+	exportEntry.Tab.SetMargined(len(exportEntry.TabEntries)-1, true)
 	// AddEntry Button replace to DeleteButton
-	btnGrid := exportEntry.TabEntries[index-1]
+	btnGrid := exportEntry.TabEntries[exportEntry.Tab.NumPages()-2]
 	btnGrid.Delete(0)
 	delBtn := ui.NewButton(Delete)
 	delBtn.OnClicked(func(button *ui.Button) {
-
+		fmt.Printf("Delete Index: %d, SheetTab: %+v\n", index, exportEntry.SheetTab)
+		sheetIndex := exportEntry.SheetTab[index-1]
+		exportEntry.Tab.Delete(sheetIndex)
+		exportEntry.TabEntries = subSlice(exportEntry.TabEntries, sheetIndex).([]*ui.Grid)
+		exportEntry.SQLEntries = subSlice(exportEntry.SQLEntries, sheetIndex).([]*SQLEntry)
+		temp := make(map[int]int)
+		for k, v := range exportEntry.SheetTab {
+			if sheetIndex <= k {
+				v0 := v - 1
+				if v0 >= 0 {
+					temp[k] = v0
+				}
+			} else {
+				temp[k] = v
+			}
+		}
+		exportEntry.SheetTab = temp
+		fmt.Printf("NewSheetTab: %+v\n", exportEntry.SheetTab)
+		exportEntry.DeletedTab += 1
 	})
 	btnGrid.Append(delBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 }
 
 func addNewTab() {
-	exportEntry.Tab.Append("Sheet-"+strconv.Itoa(len(exportEntry.SQLEntries)+1), newTabEntry())
+	exportEntry.Tab.Append("Sheet-"+strconv.Itoa(sheetCount+1), newTabEntry())
 }
 
 func newTabEntry() *ui.Box {
@@ -204,6 +346,7 @@ func newTabEntry() *ui.Box {
 	var input *ui.Entry
 	input = ui.NewEntry()
 	entry.URL = input
+	resize(entry.URL)
 	length := len(exportEntry.SQLEntries)
 	if !exportEntry.UseOneURL || length > 0 {
 		input.SetReadOnly(true)
@@ -214,27 +357,33 @@ func newTabEntry() *ui.Box {
 	form.Append(URL, input, false)
 	input = ui.NewEntry()
 	entry.SQL = input
+	resize(entry.SQL)
 	form.Append(SQL, input, false)
 	input = ui.NewEntry()
 	entry.Args = input
+	resize(entry.Args)
 	form.Append(Args, input, false)
 	input = ui.NewEntry()
 	entry.Titles = input
+	resize(entry.Titles)
 	form.Append(Titles, input, false)
 	input = ui.NewEntry()
 	entry.SheetName = input
+	resize(entry.SheetName)
 	form.Append(Sheet, input, false)
 	entryBox.Append(form, false)
 	addBtnLine := ui.NewGrid()
 	addBtnLine.SetPadded(true)
 	addBtn := ui.NewButton(AddSheet)
 	addBtn.OnClicked(func(button *ui.Button) {
-		onAddBtnClicked(len(exportEntry.TabEntries))
+		onAddSheetBtnClicked(sheetCount)
 	})
 	addBtnLine.Append(addBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 	entryBox.Append(addBtnLine, false)
+	exportEntry.SheetTab[sheetCount] = sheetCount - exportEntry.DeletedTab
 	exportEntry.SQLEntries = append(exportEntry.SQLEntries, entry)
 	exportEntry.TabEntries = append(exportEntry.TabEntries, addBtnLine)
+	sheetCount++
 	return entryBox
 }
 
@@ -245,16 +394,29 @@ func onFirstURLChanged(entry *ui.Entry) {
 }
 
 type ExportEntry struct {
-	XLSName    *ui.Entry
-	SavePath   *ui.Entry
-	SQLEntries []*SQLEntry
-	Extension  *ui.Combobox
-	TabEntries []*ui.Grid
-	Tab        *ui.Tab
-	DeletedTab int
-	UseOneURL  bool
-	YesRadio   *ui.Checkbox
-	NoRadio    *ui.Checkbox
+	XLSName     *ui.Entry
+	SavePath    *ui.Entry
+	SQLEntries  []*SQLEntry
+	Extension   *ui.Combobox
+	TabEntries  []*ui.Grid
+	Tab         *ui.Tab
+	DeletedTab  int
+	UseOneURL   bool
+	YesRadio    *ui.Checkbox
+	NoRadio     *ui.Checkbox
+	SheetTab    map[int]int
+	BuildURLWin *ui.Group
+	BuildEntry  *BuildEntry
+	BuildURLBtn *ui.Button
+}
+
+type BuildEntry struct {
+	Host    *ui.Entry
+	Port    *ui.Entry
+	User    *ui.Entry
+	Pwd     *ui.Entry
+	Db      *ui.Entry
+	Charset *ui.Combobox
 }
 
 type SQLEntry struct {
@@ -274,14 +436,34 @@ func (e *ExportEntry) Clear() {
 	e.SQLEntries[0].SheetName.SetText("")
 	e.TabEntries = e.TabEntries[:1]
 	e.DeletedTab = 0
-	if e.SavePath != nil {
-		e.SavePath.SetText(downloadPath())
-	}
-	if e.Extension != nil {
-		e.Extension.SetSelected(0)
-	}
-	if e.XLSName != nil {
-		e.XLSName.SetText("")
-	}
+	checkBox(e.YesRadio, true)
+	checkBox(e.NoRadio, false)
+	set(e.BuildEntry.Host, "127.0.0.1")
+	set(e.BuildEntry.Port, "3306")
+	set(e.BuildEntry.User, "root")
+	set(e.BuildEntry.Pwd, "")
+	set(e.BuildEntry.Db, "")
+	set(e.SavePath, downloadPath())
+	set(e.XLSName, "")
+	selected(e.Extension)
+	selected(e.BuildEntry.Charset)
 	// TODO exportEntry.Tab clear
+}
+
+func checkBox(c *ui.Checkbox, checked bool) {
+	if c != nil {
+		c.SetChecked(checked)
+	}
+}
+
+func selected(c *ui.Combobox) {
+	if c != nil {
+		c.SetSelected(0)
+	}
+}
+
+func set(entry *ui.Entry, val string) {
+	if entry != nil {
+		entry.SetText(val)
+	}
 }
