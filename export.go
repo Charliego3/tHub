@@ -5,11 +5,20 @@ import (
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
 	"strconv"
+	"strings"
 )
 
 var (
 	exportEntry *ExportEntry
 	extensions  = []string{".xlsx", ".xls"}
+	prompts     = []string{
+		`1. URL: username:password@tcp(ip:port)/db?Charset=utf8`,
+		`2. SQL: select * from user where user_id = ? and name like ?`,
+		`3. Args: 666,tools (If the parameter contains[,] when, use [\.] to avoid this)`,
+		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
+		`5. Sheet: 用户统计 (This is excel sheet name)`,
+		`Tips: When multiple Sheets use the same link, other link items need not be filled in`,
+	}
 )
 
 func exportMenu() trayhost.MenuItem {
@@ -40,12 +49,61 @@ func exportOnReady(window *ui.Window) {
 	form.SetPadded(true)
 	exportEntry.XLSName = ui.NewEntry()
 	form.Append("FileName", exportEntry.XLSName, false)
+
+	// SavePath
+	defaultDownload := downloadPath()
+	savePathBox := ui.NewHorizontalBox()
+	savePathBox.SetPadded(true)
+	savePath := ui.NewEntry()
+	savePath.SetReadOnly(true)
+	savePath.SetText(defaultDownload)
+	selectBtn := ui.NewButton("Choose")
+	selectBtn.OnClicked(func(button *ui.Button) {
+		filename := ui.SaveFile(exportWindow)
+		if filename == "" {
+			filename = defaultDownload
+		}
+		if strings.HasSuffix(filename, "/Untitled") {
+			filename = filename[:strings.LastIndex(filename, "/")]
+		}
+		savePath.SetText(filename)
+	})
+	savePathBox.Append(selectBtn, false)
+	savePathBox.Append(savePath, true)
+	form.Append("Download", savePathBox, false)
+
 	exportEntry.Extension = ui.NewCombobox()
 	exportEntry.Extension.Append(extensions[0])
 	exportEntry.Extension.Append(extensions[1])
 	exportEntry.Extension.SetSelected(0)
 	form.Append("Extension", exportEntry.Extension, false)
 	mainBox.Append(form, false)
+
+	// Radio Buttons for Same connection URL from checkbox impl
+	yes := ui.NewCheckbox("Yes")
+	no := ui.NewCheckbox("No")
+	yes.SetChecked(true)
+	yes.OnToggled(func(checkbox *ui.Checkbox) {
+		// checked yes
+		if checkbox.Checked() {
+			no.SetChecked(false)
+		} else {
+			// remove TabSheet's URL form line
+		}
+	})
+	no.OnToggled(func(checkbox *ui.Checkbox) {
+		if checkbox.Checked() {
+			yes.SetChecked(false)
+		} else {
+			// add TabSheet's URL form line
+		}
+	})
+	radioBox := ui.NewHorizontalBox()
+	radioBox.SetPadded(true)
+	radioBox.Append(ui.NewLabel("Use the same connection URL for multi sheet?"), false)
+	radioBox.Append(yes, false)
+	radioBox.Append(no, false)
+	mainBox.Append(radioBox, false)
 
 	exportEntry.Tab = ui.NewTab()
 	addNewTab()
@@ -58,7 +116,19 @@ func exportOnReady(window *ui.Window) {
 	exportBtn.OnClicked(onExportBtnClicked)
 	exportBtnLine.Append(exportBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 	mainBox.Append(exportBtnLine, false)
+
+	// Prompt Form format
+	separator := ui.NewHorizontalSeparator()
+	mainBox.Append(separator, false)
+	prompt(mainBox)
+
 	exportWindow.SetChild(mainBox)
+}
+
+func prompt(mainBox *ui.Box) {
+	for _, p := range prompts {
+		mainBox.Append(ui.NewLabel(p), false)
+	}
 }
 
 func onExportBtnClicked(button *ui.Button) {
@@ -147,6 +217,7 @@ func newTabEntry() *ui.Box {
 
 type ExportEntry struct {
 	XLSName    *ui.Entry
+	SavePath   *ui.Entry
 	SQLEntries []*SQLEntry
 	Extension  *ui.Combobox
 	TabEntries map[int]*ui.Grid
@@ -171,6 +242,9 @@ func (e *ExportEntry) Clear() {
 	e.SQLEntries[0].SheetName.SetText("")
 	e.TabEntries = make(map[int]*ui.Grid)
 	e.DeletedTab = 0
+	if e.SavePath != nil {
+		e.SavePath.SetText(downloadPath())
+	}
 	if e.Extension != nil {
 		e.Extension.SetSelected(0)
 	}

@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
+	"os"
+	"runtime"
 )
 
 func createWindow(title string, width, height int) *ui.Window {
@@ -22,6 +24,25 @@ func getClipboard() (string, error) {
 
 func setClipboard(text string) {
 	trayhost.SetClipboardText(text)
+}
+
+func downloadPath() string {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		switch runtime.GOOS {
+		case "windows":
+			dir = "C:/"
+		default:
+			dir = "/"
+		}
+	}
+	switch runtime.GOOS {
+	case "windows":
+		dir += ""
+	default:
+		dir += "/Downloads"
+	}
+	return dir
 }
 
 type Window interface {
