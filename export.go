@@ -130,8 +130,21 @@ func exportOnReady(window *ui.Window) {
 }
 
 func prompt(mainBox *ui.Box) {
-	for _, p := range prompts {
-		mainBox.Append(ui.NewLabel(p), false)
+	for index, p := range prompts {
+		if index == 0 {
+			box := ui.NewHorizontalBox()
+			box.SetPadded(true)
+			label := ui.NewLabel(p)
+			button := ui.NewButton("BuildURL")
+			button.OnClicked(func(button *ui.Button) {
+
+			})
+			box.Append(label, false)
+			box.Append(button, false)
+			mainBox.Append(box, false)
+		} else {
+			mainBox.Append(ui.NewLabel(p), false)
+		}
 	}
 }
 
