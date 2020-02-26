@@ -87,15 +87,19 @@ func exportOnReady(window *ui.Window) {
 		// checked yes
 		if checkbox.Checked() {
 			no.SetChecked(false)
+			exportEntry.UseOneURL = true
 		} else {
 			// remove TabSheet's URL form line
+			checkbox.SetChecked(true)
 		}
 	})
 	no.OnToggled(func(checkbox *ui.Checkbox) {
 		if checkbox.Checked() {
 			yes.SetChecked(false)
+			exportEntry.UseOneURL = false
 		} else {
 			// add TabSheet's URL form line
+			checkbox.SetChecked(true)
 		}
 	})
 	radioBox := ui.NewHorizontalBox()
@@ -188,9 +192,12 @@ func newTabEntry() *ui.Box {
 	entry := &SQLEntry{}
 	form := ui.NewForm()
 	form.SetPadded(true)
-	input := ui.NewEntry()
-	entry.URL = input
-	form.Append("URL", input, false)
+	var input *ui.Entry
+	if !exportEntry.UseOneURL || len(exportEntry.SQLEntries) == 0 {
+		input = ui.NewEntry()
+		entry.URL = input
+		form.Append("URL", input, false)
+	}
 	input = ui.NewEntry()
 	entry.SQL = input
 	form.Append("SQL", input, false)
@@ -223,6 +230,7 @@ type ExportEntry struct {
 	TabEntries map[int]*ui.Grid
 	Tab        *ui.Tab
 	DeletedTab int
+	UseOneURL  bool
 }
 
 type SQLEntry struct {
