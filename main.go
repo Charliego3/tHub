@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
+	"os"
 )
 
 var (
@@ -12,12 +13,15 @@ var (
 )
 
 func main() {
-	_ = ui.Main(func() {
+	err := ui.Main(func() {
 		md5OnReady(createWindow("MD5 Encrypt", 480, 84))
 		base64OnReady(createWindow("Base64 Encrypt", 480, 84))
 		exportOnReady(createWindow("Export Excel From MySQL", 608, 115))
 		menus()
 	})
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
 func menus() {

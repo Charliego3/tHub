@@ -20,6 +20,7 @@ var (
 		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
 		`5. Sheet: 用户统计 (This is excel sheet name)`,
 		`Tips: When multiple Sheets use the same URL, just fill in the URL of the first Sheet`,
+		`         If you want to paste content, you need to use the right mouse button.`,
 	}
 )
 
@@ -293,44 +294,51 @@ func onExportBtnClicked(button *ui.Button) {
 		button.Enable()
 	}()
 	xlsName := exportEntry.XLSName.Text()
+	if xlsName == "" {
+		xlsName = Untitled
+	}
 	extension := extensions[exportEntry.Extension.Selected()]
+	xlsName = strings.TrimSpace(xlsName) + extension
 	for _, entry := range exportEntry.SQLEntries {
-		fmt.Printf("XLSName: %s, Extension: %s, URL: %s, SQL: %s, Args: %+v, Titles: %+v, SheetName: %s\n",
-			xlsName, extension, entry.URL.Text(), entry.SQL.Text(), entry.Args.Text(), entry.Titles.Text(), entry.SheetName.Text())
+		fmt.Printf("XLSName: %s, URL: %s, SQL: %s, Args: %+v, Titles: %+v, SheetName: %s\n",
+			xlsName, entry.URL.Text(), entry.SQL.Text(), entry.Args.Text(), entry.Titles.Text(), entry.SheetName.Text())
 	}
 }
 
 func onAddSheetBtnClicked(index int) {
 	// Add new TabSheet to Tab
 	addNewTab()
-	fmt.Printf("Add Index: %d, SheetTab: %+v\n", index, exportEntry.SheetTab)
 	exportEntry.Tab.SetMargined(len(exportEntry.TabEntries)-1, true)
 	// AddEntry Button replace to DeleteButton
 	btnGrid := exportEntry.TabEntries[exportEntry.Tab.NumPages()-2]
 	btnGrid.Delete(0)
 	delBtn := ui.NewButton(Delete)
 	delBtn.OnClicked(func(button *ui.Button) {
-		fmt.Printf("Delete Index: %d, SheetTab: %+v\n", index, exportEntry.SheetTab)
-		sheetIndex := exportEntry.SheetTab[index-1]
-		exportEntry.Tab.Delete(sheetIndex)
-		exportEntry.TabEntries = subSlice(exportEntry.TabEntries, sheetIndex).([]*ui.Grid)
-		exportEntry.SQLEntries = subSlice(exportEntry.SQLEntries, sheetIndex).([]*SQLEntry)
-		temp := make(map[int]int)
-		for k, v := range exportEntry.SheetTab {
-			if sheetIndex <= k {
-				v0 := v - 1
-				if v0 >= 0 {
-					temp[k] = v0
-				}
-			} else {
-				temp[k] = v
-			}
-		}
-		exportEntry.SheetTab = temp
-		fmt.Printf("NewSheetTab: %+v\n", exportEntry.SheetTab)
-		exportEntry.DeletedTab += 1
+		onTabDeleted(exportEntry.SheetTab[index-1])
 	})
 	btnGrid.Append(delBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
+}
+
+func onTabDeleted(sheetIndex int) {
+	exportEntry.Tab.Delete(sheetIndex)
+	exportEntry.TabEntries = append(exportEntry.TabEntries[:sheetIndex], exportEntry.TabEntries[sheetIndex+1:]...)
+	exportEntry.SQLEntries = append(exportEntry.SQLEntries[:sheetIndex], exportEntry.SQLEntries[sheetIndex+1:]...)
+	temp := make(map[int]int)
+	for k, v := range exportEntry.SheetTab {
+		if sheetIndex <= k {
+			v0 := v - 1
+			if v0 >= 0 {
+				temp[k] = v0
+			}
+		} else {
+			temp[k] = v
+		}
+	}
+	exportEntry.SheetTab = temp
+	exportEntry.DeletedTab += 1
+	if exportEntry.Tab.NumPages() == 1 {
+		exportEntry.SQLEntries[0].URL.SetReadOnly(false)
+	}
 }
 
 func addNewTab() {
