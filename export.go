@@ -17,7 +17,7 @@ var (
 		`3. Args: 666,tools (If the parameter contains[,] when, use [\.] to avoid this)`,
 		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
 		`5. Sheet: 用户统计 (This is excel sheet name)`,
-		`Tips: When multiple Sheets use the same link, other link items need not be filled in`,
+		`Tips: When multiple Sheets use the same URL, just fill in the URL of the first Sheet`,
 	}
 )
 
@@ -39,16 +39,14 @@ func exportOnReady(window *ui.Window) {
 		window.Hide()
 		return false
 	})
-	exportEntry = &ExportEntry{
-		TabEntries: make(map[int]*ui.Grid),
-	}
+	exportEntry = &ExportEntry{}
 	mainBox := ui.NewVerticalBox()
 	mainBox.SetPadded(true)
 
 	form := ui.NewForm()
 	form.SetPadded(true)
 	exportEntry.XLSName = ui.NewEntry()
-	form.Append("FileName", exportEntry.XLSName, false)
+	form.Append(FileName, exportEntry.XLSName, false)
 
 	// SavePath
 	defaultDownload := downloadPath()
@@ -57,7 +55,7 @@ func exportOnReady(window *ui.Window) {
 	savePath := ui.NewEntry()
 	savePath.SetReadOnly(true)
 	savePath.SetText(defaultDownload)
-	selectBtn := ui.NewButton("Choose")
+	selectBtn := ui.NewButton(Choose)
 	selectBtn.OnClicked(func(button *ui.Button) {
 		filename := ui.SaveFile(exportWindow)
 		if filename == "" {
@@ -70,43 +68,27 @@ func exportOnReady(window *ui.Window) {
 	})
 	savePathBox.Append(selectBtn, false)
 	savePathBox.Append(savePath, true)
-	form.Append("Download", savePathBox, false)
+	form.Append(Download, savePathBox, false)
 
 	exportEntry.Extension = ui.NewCombobox()
 	exportEntry.Extension.Append(extensions[0])
 	exportEntry.Extension.Append(extensions[1])
 	exportEntry.Extension.SetSelected(0)
-	form.Append("Extension", exportEntry.Extension, false)
+	form.Append(Extension, exportEntry.Extension, false)
 	mainBox.Append(form, false)
 
 	// Radio Buttons for Same connection URL from checkbox impl
-	yes := ui.NewCheckbox("Yes")
-	no := ui.NewCheckbox("No")
-	yes.SetChecked(true)
-	yes.OnToggled(func(checkbox *ui.Checkbox) {
-		// checked yes
-		if checkbox.Checked() {
-			no.SetChecked(false)
-			exportEntry.UseOneURL = true
-		} else {
-			// remove TabSheet's URL form line
-			checkbox.SetChecked(true)
-		}
-	})
-	no.OnToggled(func(checkbox *ui.Checkbox) {
-		if checkbox.Checked() {
-			yes.SetChecked(false)
-			exportEntry.UseOneURL = false
-		} else {
-			// add TabSheet's URL form line
-			checkbox.SetChecked(true)
-		}
-	})
+	exportEntry.YesRadio = ui.NewCheckbox(Yes)
+	exportEntry.NoRadio = ui.NewCheckbox(No)
+	exportEntry.YesRadio.SetChecked(true)
+	exportEntry.YesRadio.OnToggled(onMultiChecked)
+	exportEntry.NoRadio.OnToggled(onMultiChecked)
+	exportEntry.UseOneURL = exportEntry.YesRadio.Checked()
 	radioBox := ui.NewHorizontalBox()
 	radioBox.SetPadded(true)
 	radioBox.Append(ui.NewLabel("Use the same connection URL for multi sheet?"), false)
-	radioBox.Append(yes, false)
-	radioBox.Append(no, false)
+	radioBox.Append(exportEntry.YesRadio, false)
+	radioBox.Append(exportEntry.NoRadio, false)
 	mainBox.Append(radioBox, false)
 
 	exportEntry.Tab = ui.NewTab()
@@ -116,7 +98,7 @@ func exportOnReady(window *ui.Window) {
 
 	exportBtnLine := ui.NewGrid()
 	exportBtnLine.SetPadded(true)
-	exportBtn := ui.NewButton("Export")
+	exportBtn := ui.NewButton(Export)
 	exportBtn.OnClicked(onExportBtnClicked)
 	exportBtnLine.Append(exportBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 	mainBox.Append(exportBtnLine, false)
@@ -129,15 +111,44 @@ func exportOnReady(window *ui.Window) {
 	exportWindow.SetChild(mainBox)
 }
 
+func onMultiChecked(checkbox *ui.Checkbox) {
+	if checkbox.Text() == Yes {
+		// checked yes
+		if checkbox.Checked() {
+			exportEntry.NoRadio.SetChecked(false)
+			exportEntry.UseOneURL = true
+			for _, entry := range exportEntry.SQLEntries[1:] {
+				entry.URL.SetReadOnly(true)
+				entry.URL.SetText(exportEntry.SQLEntries[0].URL.Text())
+			}
+		} else {
+			checkbox.SetChecked(true)
+		}
+	} else {
+		if checkbox.Checked() {
+			exportEntry.YesRadio.SetChecked(false)
+			exportEntry.UseOneURL = false
+			for index, entry := range exportEntry.SQLEntries {
+				if index == 0 {
+					entry.URL.OnChanged(nil)
+				}
+				entry.URL.SetReadOnly(false)
+			}
+		} else {
+			checkbox.SetChecked(true)
+		}
+	}
+}
+
 func prompt(mainBox *ui.Box) {
 	for index, p := range prompts {
 		if index == 0 {
 			box := ui.NewHorizontalBox()
 			box.SetPadded(true)
 			label := ui.NewLabel(p)
-			button := ui.NewButton("BuildURL")
+			button := ui.NewButton(BuildURL)
 			button.OnClicked(func(button *ui.Button) {
-
+				// TODO Build URL window
 			})
 			box.Append(label, false)
 			box.Append(button, false)
@@ -167,30 +178,16 @@ func onExportBtnClicked(button *ui.Button) {
 }
 
 // TODO fix add and delete tab bug
-func onAddBtnClicked(button *ui.Button) {
+func onAddBtnClicked(index int) {
 	// Add new TabSheet to Tab
-	index := len(exportEntry.TabEntries)
 	addNewTab()
 	exportEntry.Tab.SetMargined(index, true)
 	// AddEntry Button replace to DeleteButton
-	tl := index + exportEntry.DeletedTab
-	println("Change delete:", tl)
-	btnGrid := exportEntry.TabEntries[tl]
+	btnGrid := exportEntry.TabEntries[index-1]
 	btnGrid.Delete(0)
-	delBtn := ui.NewButton("Delete")
+	delBtn := ui.NewButton(Delete)
 	delBtn.OnClicked(func(button *ui.Button) {
-		delete(exportEntry.TabEntries, index)
-		println("Grid Index:", index, "NumPages:", exportEntry.Tab.NumPages())
-		deli := index - exportEntry.DeletedTab - 1
-		if deli < 0 {
-			deli = 0
-		}
-		var temp []*SQLEntry
-		temp = append(temp, exportEntry.SQLEntries[:index-1]...)
-		temp = append(temp, exportEntry.SQLEntries[index:]...)
-		exportEntry.SQLEntries = temp
-		exportEntry.Tab.Delete(deli)
-		exportEntry.DeletedTab += 1
+
 	})
 	btnGrid.Append(delBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 }
@@ -206,33 +203,46 @@ func newTabEntry() *ui.Box {
 	form := ui.NewForm()
 	form.SetPadded(true)
 	var input *ui.Entry
-	if !exportEntry.UseOneURL || len(exportEntry.SQLEntries) == 0 {
-		input = ui.NewEntry()
-		entry.URL = input
-		form.Append("URL", input, false)
+	input = ui.NewEntry()
+	entry.URL = input
+	length := len(exportEntry.SQLEntries)
+	if !exportEntry.UseOneURL || length > 0 {
+		input.SetReadOnly(true)
+		input.SetText(exportEntry.SQLEntries[length-1].URL.Text())
+	} else {
+		input.OnChanged(firstURLChanged)
 	}
+	form.Append(URL, input, false)
 	input = ui.NewEntry()
 	entry.SQL = input
-	form.Append("SQL", input, false)
+	form.Append(SQL, input, false)
 	input = ui.NewEntry()
 	entry.Args = input
-	form.Append("Args", input, false)
+	form.Append(Args, input, false)
 	input = ui.NewEntry()
 	entry.Titles = input
-	form.Append("Titles", input, false)
+	form.Append(Titles, input, false)
 	input = ui.NewEntry()
 	entry.SheetName = input
-	form.Append("Sheet", input, false)
+	form.Append(Sheet, input, false)
 	entryBox.Append(form, false)
 	addBtnLine := ui.NewGrid()
 	addBtnLine.SetPadded(true)
-	addBtn := ui.NewButton("Add Entry")
-	addBtn.OnClicked(onAddBtnClicked)
+	addBtn := ui.NewButton(AddSheet)
+	addBtn.OnClicked(func(button *ui.Button) {
+		onAddBtnClicked(len(exportEntry.TabEntries))
+	})
 	addBtnLine.Append(addBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
 	entryBox.Append(addBtnLine, false)
 	exportEntry.SQLEntries = append(exportEntry.SQLEntries, entry)
-	exportEntry.TabEntries[len(exportEntry.TabEntries)+1] = addBtnLine
+	exportEntry.TabEntries = append(exportEntry.TabEntries, addBtnLine)
 	return entryBox
+}
+
+func firstURLChanged(entry *ui.Entry) {
+	for _, url := range exportEntry.SQLEntries {
+		url.URL.SetText(entry.Text())
+	}
 }
 
 type ExportEntry struct {
@@ -240,10 +250,12 @@ type ExportEntry struct {
 	SavePath   *ui.Entry
 	SQLEntries []*SQLEntry
 	Extension  *ui.Combobox
-	TabEntries map[int]*ui.Grid
+	TabEntries []*ui.Grid
 	Tab        *ui.Tab
 	DeletedTab int
 	UseOneURL  bool
+	YesRadio   *ui.Checkbox
+	NoRadio    *ui.Checkbox
 }
 
 type SQLEntry struct {
@@ -261,7 +273,7 @@ func (e *ExportEntry) Clear() {
 	e.SQLEntries[0].Args.SetText("")
 	e.SQLEntries[0].Titles.SetText("")
 	e.SQLEntries[0].SheetName.SetText("")
-	e.TabEntries = make(map[int]*ui.Grid)
+	e.TabEntries = e.TabEntries[:1]
 	e.DeletedTab = 0
 	if e.SavePath != nil {
 		e.SavePath.SetText(downloadPath())
