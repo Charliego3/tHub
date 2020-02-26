@@ -117,6 +117,7 @@ func onMultiChecked(checkbox *ui.Checkbox) {
 		if checkbox.Checked() {
 			exportEntry.NoRadio.SetChecked(false)
 			exportEntry.UseOneURL = true
+			exportEntry.SQLEntries[0].URL.OnChanged(onFirstURLChanged)
 			for _, entry := range exportEntry.SQLEntries[1:] {
 				entry.URL.SetReadOnly(true)
 				entry.URL.SetText(exportEntry.SQLEntries[0].URL.Text())
@@ -128,10 +129,8 @@ func onMultiChecked(checkbox *ui.Checkbox) {
 		if checkbox.Checked() {
 			exportEntry.YesRadio.SetChecked(false)
 			exportEntry.UseOneURL = false
-			for index, entry := range exportEntry.SQLEntries {
-				if index == 0 {
-					entry.URL.OnChanged(nil)
-				}
+			exportEntry.SQLEntries[0].URL.OnChanged(nil)
+			for _, entry := range exportEntry.SQLEntries {
 				entry.URL.SetReadOnly(false)
 			}
 		} else {
@@ -210,7 +209,7 @@ func newTabEntry() *ui.Box {
 		input.SetReadOnly(true)
 		input.SetText(exportEntry.SQLEntries[length-1].URL.Text())
 	} else {
-		input.OnChanged(firstURLChanged)
+		input.OnChanged(onFirstURLChanged)
 	}
 	form.Append(URL, input, false)
 	input = ui.NewEntry()
@@ -239,7 +238,7 @@ func newTabEntry() *ui.Box {
 	return entryBox
 }
 
-func firstURLChanged(entry *ui.Entry) {
+func onFirstURLChanged(entry *ui.Entry) {
 	for _, url := range exportEntry.SQLEntries {
 		url.URL.SetText(entry.Text())
 	}
