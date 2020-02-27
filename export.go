@@ -10,17 +10,20 @@ import (
 )
 
 var (
-	sheetCount  int
-	exportEntry *ExportEntry
-	extensions  = []string{".xlsx", ".xls"}
-	prompts     = []string{
+	sheetCount    int
+	progressBar   *ui.ProgressBar
+	progressVal   *ui.Label
+	exportPadding *ui.Label
+	exportEntry   *ExportEntry
+	extensions    = []string{".xlsx", ".xls"}
+	prompts       = []string{
 		`1. URL: username:password@tcp(ip:port)/db?Charset=utf8`,
 		`2. SQL: select * from user where user_id = ? and name like ?`,
 		`3. Args: 666,tools (If the parameter contains[,] when, use [\.] to avoid this)`,
 		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
 		`5. Sheet: 用户统计 (This is excel sheet name)`,
 		`Tips: When multiple Sheets use the same URL, just fill in the URL of the first Sheet`,
-		`         If you want to paste content, you need to use the right mouse button.`,
+		`If you want to paste content, you need to use the right mouse button.`,
 	}
 )
 
@@ -30,6 +33,9 @@ func exportMenu() trayhost.MenuItem {
 		Handler: func() {
 			if exportEntry != nil {
 				exportEntry.Clear()
+				exportPadding.Show()
+				progressBar.Hide()
+				progressVal.Hide()
 			}
 			exportWindow.Show()
 		},
@@ -102,11 +108,19 @@ func exportOnReady(window *ui.Window) {
 	exportEntry.Tab.SetMargined(0, true)
 	mainBox.Append(exportEntry.Tab, false)
 
-	exportBtnLine := ui.NewGrid()
+	exportBtnLine := ui.NewHorizontalBox()
 	exportBtnLine.SetPadded(true)
 	exportBtn := ui.NewButton(Export)
 	exportBtn.OnClicked(onExportBtnClicked)
-	exportBtnLine.Append(exportBtn, 0, 0, 1, 1, false, ui.AlignEnd, false, ui.AlignFill)
+	exportPadding = ui.NewLabel("")
+	progressBar = ui.NewProgressBar()
+	progressBar.Hide()
+	progressVal = ui.NewLabel(" 0% ")
+	progressVal.Hide()
+	exportBtnLine.Append(exportPadding, true)
+	exportBtnLine.Append(progressBar, true)
+	exportBtnLine.Append(progressVal, false)
+	exportBtnLine.Append(exportBtn, false)
 	mainBox.Append(exportBtnLine, false)
 
 	// Prompt Form format
@@ -293,6 +307,11 @@ func onExportBtnClicked(button *ui.Button) {
 		}
 		button.Enable()
 	}()
+	exportPadding.Hide()
+	progressBar.SetValue(0)
+	progressBar.Show()
+	progressVal.SetText(" 0% ")
+	progressVal.Show()
 	xlsName := exportEntry.XLSName.Text()
 	if xlsName == "" {
 		xlsName = Untitled
