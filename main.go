@@ -9,7 +9,7 @@ import (
 var (
 	md5Window    *ui.Window
 	base64Window *ui.Window
-	exportWindow *ui.Window
+	exportWindow *ExportWindow
 )
 
 func main() {

@@ -27,25 +27,39 @@ var (
 	}
 )
 
+type Export struct {
+	Window   *ExportWindow
+	FileName string
+	Download string
+	Multiple bool // 多个Sheet使用同一个DBConnection
+	Sheets   Sheets
+}
+
+type Sheets []SingleSheet
+
+type SingleSheet struct {
+	URL       string
+	SQL       string
+	Args      string
+	Titles    string
+	SheetName string
+}
+
 func exportMenu() trayhost.MenuItem {
 	return trayhost.MenuItem{
 		Title: exportWindow.Title(),
 		Handler: func() {
-			if exportEntry != nil {
-				exportEntry.Clear()
-				exportPadding.Show()
-				progressBar.Hide()
-				progressVal.Hide()
-			}
 			exportWindow.Show()
 		},
 	}
 }
 
 func exportOnReady(window *ui.Window) {
-	exportWindow = window
+	exportWindow = &ExportWindow{
+		Window: window,
+	}
 	exportWindow.OnClosing(func(window *ui.Window) bool {
-		window.Hide()
+		exportWindow.Hide()
 		return false
 	})
 	exportEntry = &ExportEntry{
@@ -64,22 +78,22 @@ func exportOnReady(window *ui.Window) {
 	defaultDownload := downloadPath()
 	savePathBox := ui.NewHorizontalBox()
 	savePathBox.SetPadded(true)
-	savePath := ui.NewEntry()
-	savePath.SetReadOnly(true)
-	savePath.SetText(defaultDownload)
+	exportEntry.Download = ui.NewEntry()
+	exportEntry.Download.SetReadOnly(true)
+	exportEntry.Download.SetText(defaultDownload)
 	selectBtn := ui.NewButton(Choose)
 	selectBtn.OnClicked(func(button *ui.Button) {
-		filename := ui.SaveFile(exportWindow)
+		filename := ui.SaveFile(exportWindow.Window)
 		if filename == "" {
 			filename = defaultDownload
 		}
 		if strings.HasSuffix(filename, "/"+Untitled) {
 			filename = filename[:strings.LastIndex(filename, "/")]
 		}
-		savePath.SetText(filename)
+		exportEntry.Download.SetText(filename)
 	})
 	savePathBox.Append(selectBtn, false)
-	savePathBox.Append(savePath, true)
+	savePathBox.Append(exportEntry.Download, true)
 	form.Append(Download, savePathBox, false)
 
 	exportEntry.Extension = ui.NewCombobox()
@@ -110,7 +124,7 @@ func exportOnReady(window *ui.Window) {
 
 	exportBtnLine := ui.NewHorizontalBox()
 	exportBtnLine.SetPadded(true)
-	exportBtn := ui.NewButton(Export)
+	exportBtn := ui.NewButton(ExportBtn)
 	exportBtn.OnClicked(onExportBtnClicked)
 	exportPadding = ui.NewLabel("")
 	progressBar = ui.NewProgressBar()
@@ -227,9 +241,7 @@ func prompt(mainBox *ui.Box) {
 
 func onURLGenBtnClicked(button *ui.Button) {
 	host := exportEntry.BuildEntry.Host.Text()
-	var reg = regexp.MustCompile(`^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$`)
-	if !reg.MatchString(host) {
-		showGenErrMsg("Please enter the correct IP address")
+	if !valid(host, "Please enter the correct IP address") {
 		return
 	}
 	port := exportEntry.BuildEntry.Port.Text()
@@ -251,7 +263,7 @@ func onURLGenBtnClicked(button *ui.Button) {
 		return
 	}
 	db := exportEntry.BuildEntry.Db.Text()
-	if !valid(db, "") {
+	if !valid(db, "Please enter the valid Database") {
 		return
 	}
 	var charset string
@@ -289,7 +301,7 @@ func valid(text, msg string) bool {
 }
 
 func showGenErrMsg(msg string) {
-	ui.MsgBox(exportWindow, "Generate URL parameter error.", msg)
+	ui.MsgBox(exportWindow.Window, "Generate URL parameter error.", msg)
 }
 
 func onBuildURLBtnClicked(button *ui.Button) {
@@ -301,27 +313,79 @@ func onExportBtnClicked(button *ui.Button) {
 	button.Disable()
 	defer func() {
 		if err := recover(); err != nil {
-			ui.MsgBoxError(exportWindow,
+			ui.MsgBoxError(exportWindow.Window,
 				"Error generating Excel document.",
 				"Error details: "+fmt.Sprintf("error: %v\n", err))
 		}
 		button.Enable()
 	}()
-	exportPadding.Hide()
-	progressBar.SetValue(0)
-	progressBar.Show()
-	progressVal.SetText(" 0% ")
-	progressVal.Show()
-	xlsName := exportEntry.XLSName.Text()
-	if xlsName == "" {
-		xlsName = Untitled
+	fileName := exportEntry.XLSName.Text()
+	if fileName == "" {
+		fileName = Untitled
 	}
 	extension := extensions[exportEntry.Extension.Selected()]
-	xlsName = strings.TrimSpace(xlsName) + extension
-	for _, entry := range exportEntry.SQLEntries {
-		fmt.Printf("XLSName: %s, URL: %s, SQL: %s, Args: %+v, Titles: %+v, SheetName: %s\n",
-			xlsName, entry.URL.Text(), entry.SQL.Text(), entry.Args.Text(), entry.Titles.Text(), entry.SheetName.Text())
+	fileName = strings.TrimSpace(fileName) + extension
+	download := exportEntry.Download.Text()
+	multiple := exportEntry.YesRadio.Checked()
+	var sheets Sheets
+	var defaultUrl string
+	for index, entry := range exportEntry.SQLEntries {
+		url := entry.URL.Text()
+		if !parameterIsRegex(url, "", "The URL is incorrectly filled, the URL is empty or the format is incorrect, please fill in again") {
+			return
+		}
+		sql := entry.SQL.Text()
+		if !parameterIsRegex(sql, SQLRegex, "The SQL statement cannot be empty, or it is not a query statement, or the SQL syntax is incorrect. Please check and try again") {
+			return
+		}
+		if index == 0 {
+			defaultUrl = url
+		}
+		if multiple {
+			url = defaultUrl
+		}
+		sheets = append(sheets, SingleSheet{
+			URL:       url,
+			SQL:       sql,
+			Args:      entry.Args.Text(),
+			Titles:    entry.Titles.Text(),
+			SheetName: entry.SheetName.Text(),
+		})
 	}
+	export := Export{
+		Window:   exportWindow,
+		FileName: fileName,
+		Download: download,
+		Multiple: multiple,
+		Sheets:   sheets,
+	}
+	exportWindow.ShowProgress()
+	exporting(export)
+}
+
+func parameterIsRegex(text, regex, msg string) bool {
+	if !sheetParameterError(text, msg, func() bool {
+		if regex != "" {
+			sqlRegex := regexp.MustCompile(regex)
+			if !sqlRegex.MatchString(text) {
+				return false
+			}
+		}
+		return true
+	}) {
+		return false
+	}
+	return true
+}
+
+func sheetParameterError(text, msg string, checker func() bool) bool {
+	if text == "" || (checker != nil && !checker()) {
+		ui.MsgBoxError(exportWindow.Window,
+			"Sheet parameters are incorrectly filled.",
+			"Error details: "+msg)
+		return false
+	}
+	return true
 }
 
 func onAddSheetBtnClicked(index int) {
@@ -435,6 +499,7 @@ type ExportEntry struct {
 	BuildURLWin *ui.Group
 	BuildEntry  *BuildEntry
 	BuildURLBtn *ui.Button
+	Download    *ui.Entry
 }
 
 type BuildEntry struct {

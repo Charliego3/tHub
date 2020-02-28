@@ -5,7 +5,7 @@ const (
 	FileName  = "FileName"
 	Yes       = "Yes"
 	No        = "No"
-	Export    = "Export"
+	ExportBtn = "Export"
 	Extension = "Extension"
 	Download  = "Download"
 	Choose    = "Choose"
@@ -19,6 +19,8 @@ const (
 	Untitled  = "Untitled"
 
 	URLFormat = "%s:%s@tcp(%s:%s)/%s?charset=%s"
+	URLRegex  = `(?m)\S+:\S+@tcp\(((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?):([0-9]|[1-9]\d{1,3}|[1-5]\d{4}|6[0-4]\d{4}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])\)/\S+\?[C|c]harset=\S+`
+	SQLRegex  = `(?mi)select\s+(\*|(\S+(,?\s*\S+)*))\s+from\s+(\S+)(\s+where\s+.*)?`
 )
 
 var (
