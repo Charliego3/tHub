@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
 	"os"
@@ -13,13 +14,21 @@ var (
 )
 
 func main() {
+	defer func() {
+		if err := recover(); err != nil {
+			notification("Error", fmt.Sprintf("%v", err), nil)
+		}
+	}()
 	err := ui.Main(func() {
 		md5OnReady(createWindow("MD5 Encrypt", 480, 84))
 		base64OnReady(createWindow("Base64 Encrypt", 480, 84))
 		exportOnReady(createWindow("Export Excel From MySQL", 608, 115))
+		exportWindow.Show()
 		menus()
 	})
+
 	if err != nil {
+		println("主协程宕掉了", err)
 		os.Exit(1)
 	}
 }

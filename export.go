@@ -19,7 +19,7 @@ var (
 	prompts       = []string{
 		`1. URL: username:password@tcp(ip:port)/db?Charset=utf8`,
 		`2. SQL: select * from user where user_id = ? and name like ?`,
-		`3. Args: 666,tools (If the parameter contains[,] when, use [\.] to avoid this)`,
+		`3. Args: 666,tools (If the parameter contains[,] when, use [\,] to avoid this)`,
 		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
 		`5. Sheet: 用户统计 (This is excel sheet name)`,
 		`Tips: When multiple Sheets use the same URL, just fill in the URL of the first Sheet`,
@@ -126,6 +126,7 @@ func exportOnReady(window *ui.Window) {
 	exportBtnLine.SetPadded(true)
 	exportBtn := ui.NewButton(ExportBtn)
 	exportBtn.OnClicked(onExportBtnClicked)
+	exportEntry.ExportBtn = exportBtn
 	exportPadding = ui.NewLabel("")
 	progressBar = ui.NewProgressBar()
 	progressBar.Hide()
@@ -217,7 +218,7 @@ func prompt(mainBox *ui.Box) {
 			urlBox.Append(form, false)
 			genBtn := ui.NewButton("Generate")
 			genBtn.OnClicked(onURLGenBtnClicked)
-			closeBtn := ui.NewButton("Close")
+			closeBtn := ui.NewButton("Cancel")
 			closeBtn.OnClicked(closeBuildPanel)
 			buildLine := ui.NewHorizontalBox()
 			buildLine.SetPadded(true)
@@ -233,8 +234,11 @@ func prompt(mainBox *ui.Box) {
 			exportEntry.BuildURLBtn.OnClicked(onBuildURLBtnClicked)
 			box.Append(label, false)
 			box.Append(exportEntry.BuildURLBtn, false)
+			exportEntry.PromptLabels = append(exportEntry.PromptLabels, label)
 		} else {
-			mainBox.Append(ui.NewLabel(p), false)
+			label := ui.NewLabel(p)
+			mainBox.Append(label, false)
+			exportEntry.PromptLabels = append(exportEntry.PromptLabels, label)
 		}
 	}
 }
@@ -309,16 +313,32 @@ func onBuildURLBtnClicked(button *ui.Button) {
 	exportEntry.BuildURLWin.Show()
 }
 
+func enableExportBtn() {
+	exportEntry.ExportBtn.SetText(ExportBtn)
+	exportEntry.ExportBtn.Enable()
+	exportWindow.Handle()
+}
+
+func hidePrompt() {
+	exportEntry.BuildURLBtn.Hide()
+	for _, label := range exportEntry.PromptLabels {
+		label.Hide()
+		exportWindow.Handle()
+		exportWindow.SetContentSize(608, 115)
+	}
+}
+
 func onExportBtnClicked(button *ui.Button) {
-	button.Disable()
 	defer func() {
 		if err := recover(); err != nil {
 			ui.MsgBoxError(exportWindow.Window,
 				"Error generating Excel document.",
 				"Error details: "+fmt.Sprintf("error: %v\n", err))
+			enableExportBtn()
 		}
-		button.Enable()
 	}()
+	button.Disable()
+	hidePrompt()
 	fileName := exportEntry.XLSName.Text()
 	if fileName == "" {
 		fileName = Untitled
@@ -332,10 +352,12 @@ func onExportBtnClicked(button *ui.Button) {
 	for index, entry := range exportEntry.SQLEntries {
 		url := entry.URL.Text()
 		if !parameterIsRegex(url, "", "The URL is incorrectly filled, the URL is empty or the format is incorrect, please fill in again") {
+			enableExportBtn()
 			return
 		}
 		sql := entry.SQL.Text()
 		if !parameterIsRegex(sql, SQLRegex, "The SQL statement cannot be empty, or it is not a query statement, or the SQL syntax is incorrect. Please check and try again") {
+			enableExportBtn()
 			return
 		}
 		if index == 0 {
@@ -359,7 +381,7 @@ func onExportBtnClicked(button *ui.Button) {
 		Multiple: multiple,
 		Sheets:   sheets,
 	}
-	exportWindow.ShowProgress()
+	exportWindow.showProgress()
 	exporting(export)
 }
 
@@ -485,21 +507,23 @@ func onFirstURLChanged(entry *ui.Entry) {
 }
 
 type ExportEntry struct {
-	XLSName     *ui.Entry
-	SavePath    *ui.Entry
-	SQLEntries  []*SQLEntry
-	Extension   *ui.Combobox
-	TabEntries  []*ui.Grid
-	Tab         *ui.Tab
-	DeletedTab  int
-	UseOneURL   bool
-	YesRadio    *ui.Checkbox
-	NoRadio     *ui.Checkbox
-	SheetTab    map[int]int
-	BuildURLWin *ui.Group
-	BuildEntry  *BuildEntry
-	BuildURLBtn *ui.Button
-	Download    *ui.Entry
+	XLSName      *ui.Entry
+	SavePath     *ui.Entry
+	SQLEntries   []*SQLEntry
+	Extension    *ui.Combobox
+	TabEntries   []*ui.Grid
+	Tab          *ui.Tab
+	DeletedTab   int
+	UseOneURL    bool
+	YesRadio     *ui.Checkbox
+	NoRadio      *ui.Checkbox
+	SheetTab     map[int]int
+	BuildURLWin  *ui.Group
+	BuildEntry   *BuildEntry
+	BuildURLBtn  *ui.Button
+	Download     *ui.Entry
+	ExportBtn    *ui.Button
+	PromptLabels []*ui.Label
 }
 
 type BuildEntry struct {

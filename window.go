@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"github.com/ProtonMail/ui"
 	"github.com/shurcooL/trayhost"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -18,12 +18,10 @@ func createWindow(title string, width, height int) *ui.Window {
 
 func notification(title, body string, handler func()) {
 	notification := trayhost.Notification{
-		Title:   "Example Notification",
-		Body:    "Notification body text is here.",
+		Title:   title,
+		Body:    body,
 		Timeout: 3 * time.Second,
-		Handler: func() {
-			fmt.Println("do stuff when notification is clicked")
-		},
+		Handler: handler,
 	}
 	if cc, err := trayhost.GetClipboardContent(); err == nil && cc.Image.Kind != "" {
 		// Use image from clipboard as notification image.
@@ -81,14 +79,14 @@ func (e *ExportWindow) Show() {
 	if !exportWindow.Showing {
 		if exportEntry != nil {
 			exportEntry.Clear()
-			e.HideProgress()
+			e.hideProgress()
 		}
 		exportWindow.Window.Show()
 		exportWindow.Showing = true
 	}
 }
 
-func (e *ExportWindow) ShowProgress() {
+func (e *ExportWindow) showProgress() {
 	exportPadding.Hide()
 	progressBar.SetValue(0)
 	progressBar.Show()
@@ -96,7 +94,7 @@ func (e *ExportWindow) ShowProgress() {
 	progressVal.Show()
 }
 
-func (e *ExportWindow) HideProgress() {
+func (e *ExportWindow) hideProgress() {
 	exportPadding.Show()
 	progressBar.Hide()
 	progressVal.Hide()
@@ -105,4 +103,20 @@ func (e *ExportWindow) HideProgress() {
 func (e *ExportWindow) progressFinish() {
 	progressBar.SetValue(100)
 	progressVal.SetText("100%")
+}
+
+func (e *ExportWindow) setProgress(progress int) {
+	progressBar.SetValue(progress)
+	p := strconv.Itoa(progress)
+	length := len([]rune(p))
+	if length == 1 {
+		p = " " + p + " %"
+	} else if length == 2 {
+		p = " " + p + "%"
+	} else {
+		p += "%"
+	}
+	progressVal.SetText(p)
+	progressBar.Handle()
+	progressVal.Handle()
 }

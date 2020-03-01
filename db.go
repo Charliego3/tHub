@@ -6,6 +6,7 @@ import (
 	"github.com/ProtonMail/ui"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/tealeg/xlsx"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -18,32 +19,47 @@ var (
 	xlsFile  *xlsx.File
 	cacheDB  *sql.DB
 	cacheUrl string
+	avgSheet float64
+	progress float64
 )
 
 func exporting(export Export) {
 	window = export.Window.Window
 	xlsFile = xlsx.NewFile()
-	for _, sheet := range export.Sheets {
-		if success, msg := dbOperation(sheet); !success {
-			export.Window.progressFinish()
-			showExportError(msg)
+	avgSheet = float64(100) / float64(len(export.Sheets))
+	go func() {
+		for _, sheet := range export.Sheets {
+			if success, msg := dbOperation(sheet, &export); !success {
+				enableExportBtn()
+				showErr(msg)
+				return
+			}
+			cacheUrl = sheet.URL
+		}
+		savedPath := export.Download + string(os.PathSeparator) + export.FileName
+		err := xlsFile.Save(savedPath)
+		if err != nil {
+			enableExportBtn()
+			showErr(fmt.Sprintf("Save The File Error. Detail: %+v", err))
 			return
 		}
-		cacheUrl = sheet.URL
-	}
-	_ = cacheDB.Close()
-	delete(urls, cacheUrl)
-	savedPath := export.Download + string(os.PathSeparator) + export.FileName
-	err := xlsFile.Save(savedPath)
-	if err != nil {
-		showExportError(fmt.Sprintf("Save The File Error. Detail: %+v", err))
-	}
-	export.Window.progressFinish()
-	ui.MsgBox(window, "Export Successful!",
-		fmt.Sprintf("The data has been exported successfully and saved in: %s", savedPath))
+		export.Window.progressFinish()
+		_ = cacheDB.Close()
+		delete(urls, cacheUrl)
+		progress = 0
+		enableExportBtn()
+	}()
 }
 
-func dbOperation(es SingleSheet) (success bool, msg string) {
+// TODO show err text
+func showErr(msg string) {
+	for i := 0; i < int(math.Ceil(float64(len([]rune(msg))/85))); i++ {
+		exportEntry.PromptLabels[i].SetText(msg[:(i+1)*85])
+		exportEntry.PromptLabels[i].Show()
+	}
+}
+
+func dbOperation(es SingleSheet, export *Export) (success bool, msg string) {
 	if es.SheetName == "" {
 		es.SheetName = matchSql(es.SQL)[4]
 	}
@@ -70,6 +86,9 @@ func dbOperation(es SingleSheet) (success bool, msg string) {
 			args = append(args, strings.TrimSpace(arg))
 		}
 	}
+
+	queryCount := getCount(es.SQL, args, db)
+	preLine := avgSheet / float64(queryCount)
 
 	// DB Query
 	rows, msg := execute(es.SQL, db, args...)
@@ -120,6 +139,13 @@ func dbOperation(es SingleSheet) (success bool, msg string) {
 			}
 			row.AddCell().Value = value
 		}
+		progress += preLine
+		if progress >= 100 {
+			progress = 99
+		}
+		fmt.Printf("Progress: %v\n", progress)
+		export.Window.setProgress(int(progress))
+		//time.Sleep(time.Millisecond * 100)
 		count++
 		if count%65534 == 0 {
 			page++
@@ -142,6 +168,12 @@ func addTitle(sheet *xlsx.Sheet, ts []string) {
 	for _, t := range ts {
 		titleRow.AddCell().Value = t
 	}
+}
+
+func getCount(query string, args []interface{}, db *sql.DB) int {
+	var count int
+	_ = db.QueryRow("select count(1) from ("+query+") t", args...).Scan(&count)
+	return count
 }
 
 func execute(querySql string, db *sql.DB, args ...interface{}) (*sql.Rows, string) {
