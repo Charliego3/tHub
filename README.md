@@ -8,4 +8,7 @@
 ![Base64](https://s2.ax1x.com/2020/03/02/3RNjYj.png)
 
 # Quick Start
-you can use `go get github.com/whimthen/tools` or download the release app for mac
+you can clone `git clone https://github.com/whimthen/tools` and `go build . && ./tools` or download the [release app](https://github.com/whimthen/tools/releases/tag/1.0.0) for mac
+> If you want to package as an app, you must follow the directory structure of Tools.app
+
+If you want to add features or improvements, please feel free to contact or raise issues
