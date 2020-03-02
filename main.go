@@ -23,7 +23,6 @@ func main() {
 		md5OnReady(createWindow("MD5 Encrypt", 480, 84))
 		base64OnReady(createWindow("Base64 Encrypt", 480, 84))
 		exportOnReady(createWindow("Export Excel From MySQL", 608, 115))
-		exportWindow.Show()
 		menus()
 	})
 
