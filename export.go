@@ -17,11 +17,11 @@ var (
 	exportEntry   *ExportEntry
 	extensions    = []string{".xlsx", ".xls"}
 	prompts       = []string{
-		`1. URL: username:password@tcp(ip:port)/db?Charset=utf8`,
-		`2. SQL: select * from user where user_id = ? and name like ?`,
-		`3. Args: 666,tools (If the parameter contains[,] when, use [\,] to avoid this)`,
-		`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
-		`5. Sheet: 用户统计 (This is excel sheet name)`,
+		//`1. URL: username:password@tcp(ip:port)/db?Charset=utf8`,
+		//`2. SQL: select * from user where user_id = ? and name like ?`,
+		//`3. Args: 666,tools (If the parameter contains[,] when, use [\,] to avoid this)`,
+		//`4. Titles: ID,姓名,年龄... (This is excel sheet column title)`,
+		//`5. Sheet: 用户统计 (This is excel sheet name)`,
 		`Tips: When multiple Sheets use the same URL, just fill in the URL of the first Sheet`,
 		`If you want to paste content, you need to use the right mouse button.`,
 	}
@@ -175,71 +175,13 @@ func onMultiChecked(checkbox *ui.Checkbox) {
 }
 
 func prompt(mainBox *ui.Box) {
-	for index, p := range prompts {
-		if index == 0 {
-			box := ui.NewHorizontalBox()
-			box.SetPadded(true)
-			mainBox.Append(box, false)
-			label := ui.NewLabel(p)
-			exportEntry.BuildURLBtn = ui.NewButton(BuildURL)
-			// Build MySQL Connection URL
-			urlBox := ui.NewVerticalBox()
-			urlBox.SetPadded(true)
-			exportEntry.BuildURLWin = ui.NewGroup("Build MySQL Connection URL")
-			exportEntry.BuildURLWin.SetMargined(true)
-			form := ui.NewForm()
-			form.SetPadded(true)
-			exportEntry.BuildEntry.Host = ui.NewEntry()
-			exportEntry.BuildEntry.Host.SetText("127.0.0.1")
-			resize(exportEntry.BuildEntry.Host)
-			form.Append("Host", exportEntry.BuildEntry.Host, false)
-			exportEntry.BuildEntry.Port = ui.NewEntry()
-			exportEntry.BuildEntry.Port.SetText("3306")
-			resize(exportEntry.BuildEntry.Port)
-			form.Append("Port", exportEntry.BuildEntry.Port, false)
-			exportEntry.BuildEntry.User = ui.NewEntry()
-			exportEntry.BuildEntry.User.SetText("root")
-			resize(exportEntry.BuildEntry.User)
-			form.Append("User", exportEntry.BuildEntry.User, false)
-			exportEntry.BuildEntry.Pwd = ui.NewPasswordEntry()
-			resize(exportEntry.BuildEntry.Pwd)
-			form.Append("Password", exportEntry.BuildEntry.Pwd, false)
-			exportEntry.BuildEntry.Db = ui.NewEntry()
-			resize(exportEntry.BuildEntry.Db)
-			form.Append("Database", exportEntry.BuildEntry.Db, false)
-			exportEntry.BuildEntry.Charset = ui.NewCombobox()
-			for _, m := range charsets {
-				for k, v := range m {
-					exportEntry.BuildEntry.Charset.Append(k + " - " + v)
-				}
-			}
-			exportEntry.BuildEntry.Charset.SetSelected(0)
-			form.Append("Charset", exportEntry.BuildEntry.Charset, false)
-			urlBox.Append(form, false)
-			genBtn := ui.NewButton("Generate")
-			genBtn.OnClicked(onURLGenBtnClicked)
-			closeBtn := ui.NewButton("Cancel")
-			closeBtn.OnClicked(closeBuildPanel)
-			buildLine := ui.NewHorizontalBox()
-			buildLine.SetPadded(true)
-			padding := ui.NewLabel("")
-			buildLine.Append(padding, true)
-			buildLine.Append(closeBtn, false)
-			buildLine.Append(genBtn, false)
-			urlBox.Append(buildLine, false)
-
-			exportEntry.BuildURLWin.SetChild(urlBox)
-			exportEntry.BuildURLWin.Hide()
-			mainBox.Append(exportEntry.BuildURLWin, false)
-			exportEntry.BuildURLBtn.OnClicked(onBuildURLBtnClicked)
-			box.Append(label, false)
-			box.Append(exportEntry.BuildURLBtn, false)
-			exportEntry.PromptLabels = append(exportEntry.PromptLabels, label)
-		} else {
-			label := ui.NewLabel(p)
-			mainBox.Append(label, false)
-			exportEntry.PromptLabels = append(exportEntry.PromptLabels, label)
-		}
+	for _, p := range prompts {
+		label := ui.NewLabel(p)
+		box := ui.NewHorizontalBox()
+		box.SetPadded(true)
+		box.Append(label, false)
+		mainBox.Append(box, false)
+		exportEntry.PromptLabels = append(exportEntry.PromptLabels, label)
 	}
 }
 
@@ -320,11 +262,8 @@ func enableExportBtn() {
 }
 
 func hidePrompt() {
-	exportEntry.BuildURLBtn.Hide()
 	for _, label := range exportEntry.PromptLabels {
-		label.Hide()
-		exportWindow.Handle()
-		exportWindow.SetContentSize(608, 115)
+		label.SetText("")
 	}
 }
 
@@ -467,7 +406,66 @@ func newTabEntry() *ui.Box {
 	} else {
 		input.OnChanged(onFirstURLChanged)
 	}
-	form.Append(URL, input, false)
+	urlLine := ui.NewHorizontalBox()
+	urlLine.SetPadded(false)
+	urlLine.Append(input, true)
+	exportEntry.BuildURLBtn = ui.NewButton(BuildURL)
+	exportEntry.BuildURLBtn.OnClicked(onBuildURLBtnClicked)
+	urlLine.Append(ui.NewLabel(" "), false)
+	urlLine.Append(exportEntry.BuildURLBtn, false)
+	// Build MySQL Connection URL
+	urlBox := ui.NewVerticalBox()
+	urlBox.SetPadded(true)
+	exportEntry.BuildURLWin = ui.NewGroup("Build MySQL Connection URL")
+	exportEntry.BuildURLWin.SetMargined(true)
+	buildForm := ui.NewForm()
+	buildForm.SetPadded(true)
+	exportEntry.BuildEntry.Host = ui.NewEntry()
+	exportEntry.BuildEntry.Host.SetText("127.0.0.1")
+	resize(exportEntry.BuildEntry.Host)
+	buildForm.Append("Host", exportEntry.BuildEntry.Host, false)
+	exportEntry.BuildEntry.Port = ui.NewEntry()
+	exportEntry.BuildEntry.Port.SetText("3306")
+	resize(exportEntry.BuildEntry.Port)
+	buildForm.Append("Port", exportEntry.BuildEntry.Port, false)
+	exportEntry.BuildEntry.User = ui.NewEntry()
+	exportEntry.BuildEntry.User.SetText("root")
+	resize(exportEntry.BuildEntry.User)
+	buildForm.Append("User", exportEntry.BuildEntry.User, false)
+	exportEntry.BuildEntry.Pwd = ui.NewPasswordEntry()
+	resize(exportEntry.BuildEntry.Pwd)
+	buildForm.Append("Password", exportEntry.BuildEntry.Pwd, false)
+	exportEntry.BuildEntry.Db = ui.NewEntry()
+	resize(exportEntry.BuildEntry.Db)
+	buildForm.Append("Database", exportEntry.BuildEntry.Db, false)
+	exportEntry.BuildEntry.Charset = ui.NewCombobox()
+	for _, m := range charsets {
+		for k, v := range m {
+			exportEntry.BuildEntry.Charset.Append(k + " - " + v)
+		}
+	}
+	exportEntry.BuildEntry.Charset.SetSelected(0)
+	buildForm.Append("Charset", exportEntry.BuildEntry.Charset, false)
+	urlBox.Append(buildForm, false)
+	genBtn := ui.NewButton("Generate")
+	genBtn.OnClicked(onURLGenBtnClicked)
+	closeBtn := ui.NewButton("Cancel")
+	closeBtn.OnClicked(closeBuildPanel)
+	padding := ui.NewLabel("")
+	buildLine := ui.NewHorizontalBox()
+	buildLine.SetPadded(true)
+	buildLine.Append(padding, true)
+	buildLine.Append(closeBtn, false)
+	buildLine.Append(genBtn, false)
+	urlBox.Append(buildLine, false)
+	exportEntry.BuildURLWin.SetChild(urlBox)
+	exportEntry.BuildURLWin.Hide()
+	box := ui.NewVerticalBox()
+	box.SetPadded(false)
+	box.Append(exportEntry.BuildURLWin, false)
+	box.Append(urlLine, false)
+
+	form.Append(URL, box, false)
 	input = ui.NewEntry()
 	entry.SQL = input
 	resize(entry.SQL)

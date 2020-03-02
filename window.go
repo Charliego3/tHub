@@ -83,6 +83,9 @@ func (e *ExportWindow) Show() {
 		}
 		exportWindow.Window.Show()
 		exportWindow.Showing = true
+		for i, p := range prompts {
+			exportEntry.PromptLabels[i].SetText(p)
+		}
 	}
 }
 

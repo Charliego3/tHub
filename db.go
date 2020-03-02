@@ -3,10 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ProtonMail/ui"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/tealeg/xlsx"
-	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -14,7 +12,6 @@ import (
 )
 
 var (
-	window   *ui.Window
 	urls     = make(map[string]*sql.DB)
 	xlsFile  *xlsx.File
 	cacheDB  *sql.DB
@@ -24,14 +21,14 @@ var (
 )
 
 func exporting(export Export) {
-	window = export.Window.Window
 	xlsFile = xlsx.NewFile()
 	avgSheet = float64(100) / float64(len(export.Sheets))
 	go func() {
+		exportEntry.PromptLabels[0].SetText("Exporting data, please be patient...")
 		for _, sheet := range export.Sheets {
 			if success, msg := dbOperation(sheet, &export); !success {
 				enableExportBtn()
-				showErr(msg)
+				showMessage(msg)
 				return
 			}
 			cacheUrl = sheet.URL
@@ -40,28 +37,39 @@ func exporting(export Export) {
 		err := xlsFile.Save(savedPath)
 		if err != nil {
 			enableExportBtn()
-			showErr(fmt.Sprintf("Save The File Error. Detail: %+v", err))
+			showMessage(fmt.Sprintf("Save The File Error. Detail: %+v", err))
 			return
 		}
-		export.Window.progressFinish()
 		_ = cacheDB.Close()
 		delete(urls, cacheUrl)
 		progress = 0
+		export.Window.progressFinish()
+		showMessage(fmt.Sprintf("Successful Export. All data has been exported, and the file is stored in the %s%s%s directory",
+			export.Download, string(os.PathSeparator), export.FileName))
 		enableExportBtn()
 	}()
 }
 
-// TODO show err text
-func showErr(msg string) {
-	for i := 0; i < int(math.Ceil(float64(len([]rune(msg))/85))); i++ {
-		exportEntry.PromptLabels[i].SetText(msg[:(i+1)*85])
-		exportEntry.PromptLabels[i].Show()
+func showMessage(msg string) {
+	length := len([]rune(msg))
+	for i := 0; i < len(prompts); i++ {
+		end := (i + 1) * 93
+		if end > length {
+			end = length
+		}
+		txt := msg[i*93 : end]
+		exportEntry.PromptLabels[i].SetText(strings.TrimSpace(txt))
 	}
 }
 
 func dbOperation(es SingleSheet, export *Export) (success bool, msg string) {
+	tableName := matchSql(es.SQL)[4]
+	if !strings.HasPrefix(exportEntry.PromptLabels[0].Text(), "Exporting data") {
+		exportEntry.PromptLabels[0].SetText(exportEntry.PromptLabels[1].Text())
+	}
+	exportEntry.PromptLabels[1].SetText("Current exporting data for the " + tableName + " table...")
 	if es.SheetName == "" {
-		es.SheetName = matchSql(es.SQL)[4]
+		es.SheetName = tableName
 	}
 	db, msg := getConnection(es.URL)
 	if db == nil {
@@ -143,9 +151,7 @@ func dbOperation(es SingleSheet, export *Export) (success bool, msg string) {
 		if progress >= 100 {
 			progress = 99
 		}
-		fmt.Printf("Progress: %v\n", progress)
 		export.Window.setProgress(int(progress))
-		//time.Sleep(time.Millisecond * 100)
 		count++
 		if count%65534 == 0 {
 			page++
@@ -210,8 +216,4 @@ func getConnection(url string) (*sql.DB, string) {
 	}
 	urls[url] = connection
 	return connection, ""
-}
-
-func showExportError(msg string) {
-	ui.MsgBoxError(window, "Error exporting Excel", msg)
 }
