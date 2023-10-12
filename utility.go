@@ -20,3 +20,5 @@ func getImageScale(scale appkit.ImageSymbolScale) appkit.ImageSymbolConfiguratio
 func sizeOf(width, height float64) foundation.Size {
 	return foundation.Size{Width: width, Height: height}
 }
+
+var _ = sizeOf(0, 0)
