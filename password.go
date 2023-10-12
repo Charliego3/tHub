@@ -1,6 +1,9 @@
 package main
 
 import (
+	"strconv"
+
+	"github.com/progrium/macdriver/dispatch"
 	"github.com/progrium/macdriver/helper/action"
 	"github.com/progrium/macdriver/helper/layout"
 	"github.com/progrium/macdriver/helper/widgets"
@@ -11,7 +14,8 @@ import (
 
 type generatePwdItem struct {
 	appkit.MenuItem
-	w appkit.Window
+	w      appkit.Window
+	combox appkit.ComboBox
 }
 
 func getGeneratePasswordItem(menu appkit.StatusItem) *generatePwdItem {
@@ -35,7 +39,7 @@ func (g *generatePwdItem) showGenerateWindow() action.Handler {
 		appkit.WindowStyleMaskUnifiedTitleAndToolbar
 	return func(objc.Object) {
 		if !g.w.IsNil() {
-			g.w.OrderFront(nil)
+			g.w.MakeKeyAndOrderFront(nil)
 			return
 		}
 
@@ -52,9 +56,9 @@ func (g *generatePwdItem) showGenerateWindow() action.Handler {
 		})
 		popup.SelectItemAtIndex(4)
 
-		combox := appkit.NewComboBox()
-		combox.SetBezelStyle(appkit.TextFieldSquareBezel)
-		combox.SetControlSize(appkit.ControlSizeSmall)
+		g.combox = appkit.NewComboBox()
+		g.combox.SetBezelStyle(appkit.TextFieldSquareBezel)
+		g.combox.SetControlSize(appkit.ControlSizeSmall)
 
 		slider := appkit.NewSlider()
 		slider.SetContinuous(true)
@@ -64,15 +68,45 @@ func (g *generatePwdItem) showGenerateWindow() action.Handler {
 		slider.SetAllowsTickMarkValuesOnly(true)
 		slider.SetMinValue(8)
 		slider.SetMaxValue(31)
-		slider.SetDoubleValue(12)
+		slider.SetIntValue(12)
+
+		getFixedValue := func() string {
+			closet := slider.ClosestTickMarkValueToValue(float64(slider.IntValue()))
+			return strconv.FormatFloat(closet, 'f', 0, 64)
+		}
+
+		text := appkit.NewLabel(getFixedValue())
+		target, selector := action.Wrap(func(_ objc.Object) {
+			dispatch.MainQueue().DispatchAsync(func() {
+				text.SetStringValue(getFixedValue())
+			})
+		})
+
+		slider.SetTarget(target)
+		slider.SetAction(selector)
+		sliderView := appkit.GridView_GridViewWithNumberOfColumnsRows(2, 0)
+		sliderView.SetTranslatesAutoresizingMaskIntoConstraints(false)
+		sliderView.SetContentHuggingPriorityForOrientation(750.0, appkit.LayoutConstraintOrientationHorizontal)
+		sliderView.SetContentHuggingPriorityForOrientation(750.0, appkit.LayoutConstraintOrientationVertical)
+		text.SetContentCompressionResistancePriorityForOrientation(appkit.LayoutPriorityRequired, appkit.LayoutConstraintOrientationVertical)
+		sliderView.AddRowWithViews([]appkit.IView{
+			slider,
+			text,
+		})
+		sliderView.ColumnAtIndex(1).SetXPlacement(appkit.GridCellPlacementTrailing)
+		sliderView.ColumnAtIndex(1).SetWidth(16)
 
 		form := widgets.NewFormView()
 		form.AddRow("类型:", popup)
-		form.AddRow("建议:", combox)
-		form.AddRow("长度:", slider)
+		form.AddRow("建议:", g.combox)
+		form.GridView.AddRowWithViews([]appkit.IView{
+			appkit.NewLabel("长度:"),
+			sliderView,
+		})
 		form.SetTranslatesAutoresizingMaskIntoConstraints(false)
 		form.SetLabelFont(appkit.Font_LabelFontOfSize(12))
 		form.SetLabelControlSpacing(10)
+		form.GridView.SetRowSpacing(10)
 
 		view := appkit.NewView()
 		view.AddSubview(form)
