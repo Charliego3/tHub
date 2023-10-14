@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 
 	"github.com/progrium/macdriver/helper/action"
@@ -31,26 +30,45 @@ func getEmulatorItem() appkit.MenuItem {
 		item.SetToolTip("Add emulator to the PATH environment variable or manually select the path of emulator")
 		return item
 	}
-	setEmulatorSubItem(item, executableName)
+	setEmulatorSubItem(item, avds)
 	return item
 }
 
-func start(name string) (action.Target, objc.Selector) {
+func start(item appkit.MenuItem, name string) (action.Target, objc.Selector) {
 	return action.Wrap(func(_ objc.Object) {
-		exec.Command(executableName, "-avd", name).Start()
+		cmd := exec.Command(executableName, "-avd", name)
+		err := cmd.Start()
+		if err != nil {
+			dialog := appkit.NewAlert()
+			dialog.SetAlertStyle(appkit.AlertStyleWarning)
+			dialog.SetIcon(appkit.Image_ImageNamed(appkit.ImageNameStatusUnavailable))
+			dialog.SetInformativeText("Start fialed with " + name)
+			dialog.SetMessageText(err.Error())
+			dialog.AddButtonWithTitle("OK")
+			dialog.RunModal()
+			return
+		}
+		go func() {
+			cmd.Wait()
+			item.SetState(appkit.ControlStateValueOff)
+		}()
+		item.SetState(appkit.ControlStateValueOn)
 	})
 }
 
-func setEmulatorSubItem(item appkit.MenuItem, path string) {
-	avds := getEmulatorList(path)
-
+func setEmulatorSubItem(item appkit.MenuItem, avds []string) {
 	menu := appkit.NewMenu()
 	for _, avd := range avds {
 		subItem := appkit.NewMenuItem()
 		subItem.SetTitle(avd)
-		target, selector := start(avd)
+		target, selector := start(subItem, avd)
 		subItem.SetTarget(target)
 		subItem.SetAction(selector)
+		subItem.SetOnStateImage(getSymbolImage("circle.inset.filled",
+			appkit.ImageSymbolConfiguration_ConfigurationWithScale(appkit.ImageSymbolScaleSmall),
+			appkit.ImageSymbolConfiguration_ConfigurationWithHierarchicalColor(appkit.Color_SystemGreenColor()),
+		))
+		menu.AddItem(subItem)
 	}
 	item.SetToolTip("")
 	item.SetTitle("Android Emulators")
@@ -59,7 +77,6 @@ func setEmulatorSubItem(item appkit.MenuItem, path string) {
 
 func getEmulatorList(path string) []string {
 	cmd := exec.Command(path, "-list-avds")
-	cmd.Dir, _ = os.UserHomeDir()
 	bs, err := cmd.Output()
 	if err == nil {
 		var avds []string
@@ -100,7 +117,7 @@ func setEmulatorPath(item appkit.MenuItem) (action.Target, objc.Selector) {
 				path := panel.URL().Path()
 				appkit.UserDefaultsController_SharedUserDefaultsController().Defaults().
 					SetObjectForKey(foundation.String_StringWithString(path), emulatorPathKey)
-				setEmulatorSubItem(item, path)
+				setEmulatorSubItem(item, getEmulatorList(path))
 			}
 		})
 		panel.OrderFront(nil)

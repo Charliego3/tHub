@@ -8,32 +8,41 @@ import (
 
 type terminal struct {
 	appkit.MenuItem
-	hasOpened bool
 }
 
 func getTerminalItem() *terminal {
 	t := &terminal{}
 	t.MenuItem = appkit.NewMenuItem()
-	t.MenuItem.SetTitle("Terminal Commands")
-	t.MenuItem.SetImage(t.getImage())
+	t.MenuItem.SetTitle("Shell Commands")
+	t.MenuItem.SetImage(getSymbolImage("terminal.fill", getImageScale(appkit.ImageSymbolScaleSmall)))
 	t.MenuItem.SetKeyEquivalentModifierMask(appkit.EventModifierFlagCommand)
 	t.MenuItem.SetKeyEquivalent("t")
-	target, selector := action.Wrap(t.addCommand)
+	target, selector := action.Wrap(t.showAddWindow)
 	t.MenuItem.SetTarget(target)
 	t.MenuItem.SetAction(selector)
-    t.MenuItem.Image().ImageWithSymbolConfiguration(appkit.ImageSymbolConfiguration_ConfigurationWithScale(appkit.ImageSymbolScaleLarge))
+
+	menu := appkit.NewMenu()
+	menu.AddItem(t.getAddCmdItem())
+	t.MenuItem.SetSubmenu(menu)
 	return t
 }
 
-func (t terminal) getImage() appkit.Image {
-	name := "terminal"
-	if t.hasOpened {
-		name += ".fill"
-	}
-	return getSymbolImage(name, getImageScale(appkit.ImageSymbolScaleSmall))
+func (t *terminal) getAddCmdItem() appkit.MenuItem {
+	item := appkit.NewMenuItem()
+	item.SetTitle("Command Settings")
+	target, selector := action.Wrap(t.showAddWindow)
+	item.SetTarget(target)
+	item.SetAction(selector)
+	return item
 }
 
-func (t *terminal) addCommand(_ objc.Object) {
-	t.hasOpened = !t.hasOpened
-	t.MenuItem.SetImage(t.getImage())
+func (t *terminal) showAddWindow(_ objc.Object) {
+	view := appkit.NewView()
+	w := NewWindow("Command Settings", view, func(w appkit.Window) {
+		w.SetContentSize(sizeOf(400, 200))
+		w.SetLevel(appkit.NormalWindowLevel)
+		w.SetStyleMask(w.StyleMask() | appkit.MiniaturizableWindowMask)
+	})
+	w.SetToolbarStyle(appkit.WindowToolbarStylePreference)
+	w.MakeKeyAndOrderFront(nil)
 }

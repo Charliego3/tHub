@@ -174,23 +174,12 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	g.r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	g.gen(objc.Object{})
 
-	controller := appkit.NewViewController()
-	controller.SetView(view)
 	delegate := &appkit.WindowDelegate{}
 	delegate.SetWindowWillClose(func(notification foundation.Notification) {
 		g.w = appkit.Window{}
 		g.length = 12
 	})
-	g.w = appkit.Window_WindowWithContentViewController(controller)
-	g.w.Center()
-	g.w.SetDelegate(delegate)
-	g.w.SetTitle("Generate Password")
-	g.w.SetTitlebarAppearsTransparent(true)
-	g.w.SetStyleMask(appkit.ClosableWindowMask |
-		appkit.TitledWindowMask |
-		appkit.WindowStyleMaskFullSizeContentView |
-		appkit.WindowStyleMaskUnifiedTitleAndToolbar)
-	g.w.SetLevel(appkit.MainMenuWindowLevel)
+	g.w = NewWindow("Generate Password", view, WithDelegate(delegate))
 	g.w.MakeKeyAndOrderFront(nil)
 }
 
