@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/charliego3/tools/utility"
 	"math/rand"
 	"strconv"
 	"time"
@@ -49,7 +50,7 @@ type generatePwdItem struct {
 
 func getGeneratePasswordItem(menu appkit.StatusItem) *generatePwdItem {
 	item := appkit.NewMenuItem()
-	item.SetImage(getSymbolImage("key.fill"))
+	item.SetImage(utility.SymbolImage("key.fill"))
 	g := &generatePwdItem{MenuItem: item, length: 12}
 	item.SetTitle("Generate Password")
 	item.SetAllowsKeyEquivalentWhenHidden(false)
@@ -123,7 +124,7 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	form := widgets.NewFormView()
 	form.AddRow("Type:", g.popup)
 	form.AddRow("Suggest:", g.combox)
-	form.GridView.AddRowWithViews([]appkit.IView{
+	form.AddRowWithViews([]appkit.IView{
 		appkit.NewLabel("Length:"),
 		sliderView,
 	})
@@ -150,7 +151,7 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	okbtn.SetTarget(okTarget)
 	okbtn.SetAction(okSelector)
 
-	g.regbtn = appkit.NewButtonWithImage(getSymbolImage("arrow.triangle.2.circlepath"))
+	g.regbtn = appkit.NewButtonWithImage(utility.SymbolImage("arrow.triangle.2.circlepath"))
 	g.regbtn.SetTranslatesAutoresizingMaskIntoConstraints(false)
 	g.regbtn.SetBezelStyle(appkit.BezelStyleRounded)
 	g.regbtn.SetBezelColor(appkit.Color_SystemGreenColor())
@@ -165,11 +166,13 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	layout.AliginCenterX(form, view)
 	layout.SetMinWidth(view, width)
 	layout.SetMinHeight(view, 145)
-	form.TopAnchor().ConstraintEqualToAnchorConstant(view.TopAnchor(), 38).SetActive(true)
-	okbtn.TopAnchor().ConstraintEqualToAnchorConstant(form.BottomAnchor(), 10).SetActive(true)
-	okbtn.TrailingAnchor().ConstraintEqualToAnchorConstant(view.TrailingAnchor(), -15).SetActive(true)
-	g.regbtn.TopAnchor().ConstraintEqualToAnchorConstant(form.BottomAnchor(), 10).SetActive(true)
-	g.regbtn.TrailingAnchor().ConstraintEqualToAnchorConstant(okbtn.LeadingAnchor(), -10).SetActive(true)
+	utility.LayoutActives(
+		form.TopAnchor().ConstraintEqualToAnchorConstant(view.TopAnchor(), 38),
+		okbtn.TopAnchor().ConstraintEqualToAnchorConstant(form.BottomAnchor(), 10),
+		okbtn.TrailingAnchor().ConstraintEqualToAnchorConstant(view.TrailingAnchor(), -15),
+		g.regbtn.TopAnchor().ConstraintEqualToAnchorConstant(form.BottomAnchor(), 10),
+		g.regbtn.TrailingAnchor().ConstraintEqualToAnchorConstant(okbtn.LeadingAnchor(), -10),
+	)
 
 	g.r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	g.gen(objc.Object{})
@@ -179,7 +182,7 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 		g.w = appkit.Window{}
 		g.length = 12
 	})
-	g.w = NewWindow("Generate Password", view, WithDelegate(delegate))
+	g.w = utility.NewWindow("Generate Password", view, utility.WithDelegate(delegate))
 	g.w.MakeKeyAndOrderFront(nil)
 }
 

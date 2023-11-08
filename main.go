@@ -1,16 +1,37 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/charliego3/tools/commands"
+	"github.com/charliego3/tools/utility"
 	"github.com/progrium/macdriver/helper/action"
-	"github.com/progrium/macdriver/macos"
 	"github.com/progrium/macdriver/macos/appkit"
+	"github.com/progrium/macdriver/macos/foundation"
 	"github.com/progrium/macdriver/objc"
+	"runtime"
 )
 
+var MenuIcon string
+
 func main() {
-	macos.RunApp(launched)
+	if len(MenuIcon) == 0 {
+		MenuIcon = "square.dashed.inset.filled"
+	}
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	app := appkit.Application_SharedApplication()
+	delegate := &appkit.ApplicationDelegate{}
+	delegate.SetApplicationDidFinishLaunching(func(notification foundation.Notification) {
+		launched(app, delegate)
+	})
+	delegate.SetApplicationWillFinishLaunching(func(foundation.Notification) {
+		setMainMenu(app)
+	})
+	delegate.SetApplicationShouldTerminateAfterLastWindowClosed(func(appkit.Application) bool {
+		return true
+	})
+	app.SetDelegate(delegate)
+	app.Run()
 }
 
 func launched(app appkit.Application, delegate *appkit.ApplicationDelegate) {
@@ -20,15 +41,15 @@ func launched(app appkit.Application, delegate *appkit.ApplicationDelegate) {
 
 	bar := appkit.StatusBar_SystemStatusBar().StatusItemWithLength(-1)
 	objc.Retain(&bar)
-	bar.Button().SetImage(getSymbolImage(
-		"command.square.fill",
+	bar.Button().SetImage(utility.SymbolImage(
+		MenuIcon,
 		appkit.ImageSymbolConfiguration_ConfigurationWithScale(appkit.ImageSymbolScaleLarge),
 	))
 
 	menu := appkit.NewMenu()
 	menu.AddItem(getGeneratePasswordItem(bar))
 	menu.AddItem(getEmulatorItem())
-	menu.AddItem(getTerminalItem())
+	menu.AddItem(commands.Item())
 	menu.AddItem(appkit.MenuItem_SeparatorItem())
 	menu.AddItem(getAutoStart())
 	menu.AddItem(getPreferencesItem())
@@ -39,10 +60,27 @@ func launched(app appkit.Application, delegate *appkit.ApplicationDelegate) {
 	app.ActivateIgnoringOtherApps(true)
 }
 
+func setMainMenu(app appkit.Application) {
+	menu := appkit.NewMenuWithTitle("main")
+	app.SetMainMenu(menu)
+
+	item := appkit.NewMenuItemWithSelector("", "", objc.Selector{})
+	edit := appkit.NewMenuWithTitle("Edit")
+	edit.AddItem(appkit.NewMenuItemWithSelector("Select All", "a", objc.Sel("selectAll:")))
+	edit.AddItem(appkit.MenuItem_SeparatorItem())
+	edit.AddItem(appkit.NewMenuItemWithSelector("Copy", "c", objc.Sel("copy:")))
+	edit.AddItem(appkit.NewMenuItemWithSelector("Paste", "v", objc.Sel("paste:")))
+	edit.AddItem(appkit.NewMenuItemWithSelector("Cut", "x", objc.Sel("cut:")))
+	edit.AddItem(appkit.NewMenuItemWithSelector("Undo", "z", objc.Sel("undo:")))
+	edit.AddItem(appkit.NewMenuItemWithSelector("Redo", "Z", objc.Sel("redo:")))
+	item.SetSubmenu(edit)
+	menu.AddItem(item)
+}
+
 func getQuit() appkit.MenuItem {
 	quit := appkit.NewMenuItem()
 	quit.SetTitle("Quit")
-	quit.SetImage(getSymbolImage("power"))
+	quit.SetImage(utility.SymbolImage("power"))
 	quit.SetAction(objc.Sel("terminate:"))
 	quit.SetKeyEquivalentModifierMask(appkit.EventModifierFlagCommand)
 	quit.SetAllowsAutomaticKeyEquivalentMirroring(true)
@@ -53,12 +91,11 @@ func getQuit() appkit.MenuItem {
 func getAutoStart() appkit.MenuItem {
 	item := appkit.NewMenuItem()
 	setImage := func(autoStartup bool) {
-		fmt.Println(autoStartup)
 		symbol := "autostartstop"
 		if !autoStartup {
 			symbol = "autostartstop.slash"
 		}
-		item.SetImage(getSymbolImage(symbol))
+		item.SetImage(utility.SymbolImage(symbol))
 	}
 
 	const key = "launchAtStartup"

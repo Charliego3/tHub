@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/charliego3/tools/utility"
 	"os/exec"
 
 	"github.com/progrium/macdriver/helper/action"
@@ -21,7 +22,7 @@ const (
 func getEmulatorItem() appkit.MenuItem {
 	avds := getEmulatorList(executableName)
 	item := appkit.NewMenuItem()
-	item.SetImage(getSymbolImage("iphone.smartbatterycase.gen2"))
+	item.SetImage(utility.SymbolImage("iphone.smartbatterycase.gen2"))
 	if len(avds) == 0 {
 		item.SetTitle("Setup emulator path")
 		target, selector := setEmulatorPath(item)
@@ -49,7 +50,7 @@ func start(item appkit.MenuItem, name string) (action.Target, objc.Selector) {
 			return
 		}
 		go func() {
-			cmd.Wait()
+			_ = cmd.Wait()
 			item.SetState(appkit.ControlStateValueOff)
 		}()
 		item.SetState(appkit.ControlStateValueOn)
@@ -64,7 +65,7 @@ func setEmulatorSubItem(item appkit.MenuItem, avds []string) {
 		target, selector := start(subItem, avd)
 		subItem.SetTarget(target)
 		subItem.SetAction(selector)
-		subItem.SetOnStateImage(getSymbolImage("circle.inset.filled",
+		subItem.SetOnStateImage(utility.SymbolImage("circle.inset.filled",
 			appkit.ImageSymbolConfiguration_ConfigurationWithScale(appkit.ImageSymbolScaleSmall),
 			appkit.ImageSymbolConfiguration_ConfigurationWithHierarchicalColor(appkit.Color_SystemGreenColor()),
 		))
