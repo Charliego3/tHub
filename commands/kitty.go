@@ -76,6 +76,9 @@ func (k *Kitty) doScript(id, fd string, m *store.Terminal) {
 	prefix := k.getCmdPrefix(fd) + " send-text --match 'id:" + id + "' "
 	exit := toShell(prefix, m.Shell)
 	for _, cmd := range m.Cmds {
+		if cmd == "" {
+			continue
+		}
 		doCmd(prefix + cmd + "\r\n")
 	}
 	if exit {

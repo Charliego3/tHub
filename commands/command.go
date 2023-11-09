@@ -69,6 +69,9 @@ func openApp(m *store.Terminal) func(objc.Object) {
 	return func(objc.Object) {
 		var exe Executor
 		for _, app := range supportedApps {
+			if !app.Enabled() {
+				continue
+			}
 			if app.BundleIdentifier() == m.App {
 				exe = app
 				break
@@ -295,6 +298,7 @@ func (t *Command) getApps(selectedIdentifier string) appkit.PopUpButton {
 		item.SetImage(icon)
 		item.SetTitle(url.LastPathComponent())
 		item.SetTag(i)
+		item.SetHidden(!app.Enabled())
 		item.SetRepresentedObject(foundation.String_StringWithString(app.BundleIdentifier()))
 		menu.AddItem(item)
 

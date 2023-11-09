@@ -9,7 +9,7 @@ func (a *Iterm2) BundleIdentifier() string {
 }
 
 func (a *Iterm2) Enabled() bool {
-	return true
+	return false
 }
 
 func (a *Iterm2) Execute(m *store.Terminal) error {

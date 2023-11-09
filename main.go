@@ -53,6 +53,7 @@ func launched(app appkit.Application, delegate *appkit.ApplicationDelegate) {
 	menu.AddItem(appkit.MenuItem_SeparatorItem())
 	menu.AddItem(getAutoStart())
 	menu.AddItem(getPreferencesItem())
+	menu.AddItem(getWebsite())
 	menu.AddItem(getQuit())
 	bar.SetMenu(menu)
 
@@ -75,6 +76,18 @@ func setMainMenu(app appkit.Application) {
 	edit.AddItem(appkit.NewMenuItemWithSelector("Redo", "Z", objc.Sel("redo:")))
 	item.SetSubmenu(edit)
 	menu.AddItem(item)
+}
+
+func getWebsite() appkit.MenuItem {
+	item := appkit.NewMenuItem()
+	item.SetTitle("Visit Website")
+	item.SetImage(utility.SymbolImage("safari"))
+	action.Set(item, func(sender objc.Object) {
+		url := foundation.URL_URLWithString("https://github.com/Charliego3/tools")
+		workspace := appkit.Workspace_SharedWorkspace()
+		workspace.OpenURL(url)
+	})
+	return item
 }
 
 func getQuit() appkit.MenuItem {

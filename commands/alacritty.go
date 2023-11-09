@@ -9,7 +9,7 @@ func (a *Alacritty) BundleIdentifier() string {
 }
 
 func (a *Alacritty) Enabled() bool {
-	return true
+	return false
 }
 
 func (a *Alacritty) Execute(m *store.Terminal) error {
