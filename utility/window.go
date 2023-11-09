@@ -36,7 +36,7 @@ func NewWindow(title string, contentView appkit.IView, opts ...Option) appkit.Wi
 	return w
 }
 
-func ModalAlert(w appkit.IWindow, multi bool, title, desc string, handler ...func(appkit.ModalResponse)) {
+func ShowAlertWithCfg(w appkit.IWindow, multi bool, title, desc string, fn func(alert appkit.Alert), handler ...func(appkit.ModalResponse)) {
 	h := func(code appkit.ModalResponse) {}
 	if len(handler) > 0 {
 		h = handler[0]
@@ -45,6 +45,10 @@ func ModalAlert(w appkit.IWindow, multi bool, title, desc string, handler ...fun
 	dialog.SetAlertStyle(appkit.AlertStyleCritical)
 	dialog.SetMessageText(title)
 	dialog.SetInformativeText(desc)
+	dialog.Window().SetLevel(appkit.FloatingWindowLevel)
+	if fn != nil {
+		fn(dialog)
+	}
 	if multi {
 		dialog.AddButtonWithTitle("OK")
 		dialog.AddButtonWithTitle("Cancel")
@@ -54,4 +58,8 @@ func ModalAlert(w appkit.IWindow, multi bool, title, desc string, handler ...fun
 		return
 	}
 	dialog.BeginSheetModalForWindowCompletionHandler(w, h)
+}
+
+func ShowAlert(w appkit.IWindow, multi bool, title, desc string, handler ...func(appkit.ModalResponse)) {
+	ShowAlertWithCfg(w, multi, title, desc, nil, handler...)
 }

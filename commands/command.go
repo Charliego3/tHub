@@ -3,7 +3,6 @@ package commands
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"github.com/charliego3/tools/store"
 	"github.com/charliego3/tools/utility"
 	"github.com/progrium/macdriver/dispatch"
@@ -79,14 +78,14 @@ func openApp(m *store.Terminal) func(objc.Object) {
 		if exe == nil {
 			workspace := appkit.Workspace_SharedWorkspace()
 			url := workspace.URLForApplicationWithBundleIdentifier(m.App)
-			utility.ModalAlert(nil, false, "Run script failed", "This app does not support: "+url.LastPathComponent())
+			utility.ShowAlert(nil, false, "Run script failed", "This app does not support: "+url.LastPathComponent())
 			return
 		}
 
 		dispatch.MainQueue().DispatchAsync(func() {
 			e := exe.Execute(m)
 			if e != nil {
-				utility.ModalAlert(nil, false, "Run script failed", e.Error())
+				utility.ShowAlert(nil, false, "Run script failed", e.Error())
 			}
 		})
 	}
@@ -104,10 +103,9 @@ func (t *Command) getShellItem(id int64, m *store.Terminal) appkit.MenuItem {
 	del := appkit.NewMenuItem()
 	del.SetTitle("Delete")
 	action.Set(del, func(sender objc.Object) {
-		utility.ModalAlert(nil, true, "Are you sure you want to delete this Command?",
+		utility.ShowAlert(nil, true, "Are you sure you want to delete this Command?",
 			"This operation is irreversible and will be deleted soon "+m.Name,
 			func(response appkit.ModalResponse) {
-				fmt.Println(response)
 				if response == appkit.AlertFirstButtonReturn {
 					opts := store.Fetch()
 					delete(opts.Terminals, id)
@@ -182,13 +180,13 @@ func (t *Command) showWindow(id int64, m *store.Terminal, title string, callback
 		action.Set(btn, func(sender objc.Object) {
 			m.Name = nameField.StringValue()
 			if m.Name == "" {
-				utility.ModalAlert(w, false, "Name is empty!", "Must specify a name to save")
+				utility.ShowAlert(w, false, "Name is empty!", "Must specify a name to save")
 				return
 			}
 
 			script := textView.ContentTextView().String()
 			if script == "" {
-				utility.ModalAlert(w, false, "Script is empty!", "There are no scripts to run here")
+				utility.ShowAlert(w, false, "Script is empty!", "There are no scripts to run here")
 				return
 			}
 
@@ -209,7 +207,7 @@ func (t *Command) showWindow(id int64, m *store.Terminal, title string, callback
 			opts.Terminals[id] = *m
 			err := opts.Save()
 			if err != nil {
-				utility.ModalAlert(w, false, "Failed to save", err.Error())
+				utility.ShowAlert(w, false, "Failed to save", err.Error())
 				return
 			}
 			w.Close()
