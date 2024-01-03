@@ -1,6 +1,6 @@
 package commands
 
-import "github.com/charliego3/tools/store"
+import "github.com/charliego3/thub/store"
 
 type Iterm2 struct{}
 

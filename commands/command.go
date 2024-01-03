@@ -3,14 +3,16 @@ package commands
 import (
 	"bufio"
 	"bytes"
-	"github.com/charliego3/tools/store"
-	"github.com/charliego3/tools/utility"
-	"github.com/progrium/macdriver/dispatch"
+	"fmt"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/charliego3/thub/store"
+	"github.com/charliego3/thub/utility"
+	"github.com/progrium/macdriver/dispatch"
 
 	"github.com/progrium/macdriver/helper/action"
 	"github.com/progrium/macdriver/helper/layout"
@@ -29,11 +31,12 @@ var supportedApps = []Executor{
 
 type Command struct {
 	appkit.MenuItem
-	menu appkit.Menu
+	menu     appkit.Menu
+	editting map[int64]struct{}
 }
 
 func Item() *Command {
-	t := &Command{}
+	t := &Command{editting: make(map[int64]struct{})}
 	t.MenuItem = appkit.NewMenuItem()
 	t.MenuItem.SetTitle("Shell Commands")
 	t.MenuItem.SetImage(utility.SymbolImage("terminal.fill", utility.ImageScale(appkit.ImageSymbolScaleSmall)))
@@ -56,7 +59,8 @@ func Item() *Command {
 	item.SetAttributedTitle(foundation.NewAttributedStringWithStringAttributes(
 		title, map[foundation.AttributedStringKey]objc.IObject{"NSFont": font}),
 	)
-	action.Set(item, t.showWindow(time.Now().UnixNano(), &store.Terminal{}, title, func(id int64, m *store.Terminal) {
+	m := &store.Terminal{}
+	action.Set(item, t.showWindow(time.Now().UnixNano(), m, false, title, func(id int64) {
 		t.menu.InsertItemAtIndex(t.getShellItem(id, m), t.menu.NumberOfItems()-2)
 	}))
 	t.menu.AddItem(appkit.MenuItem_SeparatorItem())
@@ -95,17 +99,29 @@ func openApp(m *store.Terminal) func(objc.Object) {
 }
 
 func (t *Command) getShellItem(id int64, m *store.Terminal) appkit.MenuItem {
+	getTitle := func() foundation.MutableAttributedString {
+		workspace := appkit.Workspace_SharedWorkspace()
+		url := workspace.URLForApplicationWithBundleIdentifier(m.App)
+		appName := foundation.NewAttributedStringWithStringAttributes(
+			"  –  "+url.LastPathComponent(),
+			map[foundation.AttributedStringKey]objc.IObject{
+				"NSColor": appkit.Color_SecondaryLabelColor(),
+			})
+		title := foundation.NewMutableAttributedStringWithString(m.Name)
+		title.AppendAttributedString(appName)
+		return title
+	}
 	item := appkit.NewMenuItem()
-	item.SetTitle(m.Name)
+	item.SetAttributedTitle(getTitle())
 	action.Set(item, openApp(m))
 	edit := appkit.NewMenuItem()
 	edit.SetTitle("Edit")
-	action.Set(edit, t.showWindow(id, m, "Edit Command", func(id int64, em *store.Terminal) {
-		item.SetTitle(m.Name)
+	action.Set(edit, t.showWindow(id, m, true, "Edit Command", func(_ int64) {
+		item.SetAttributedTitle(getTitle())
 	}))
 	del := appkit.NewMenuItem()
 	del.SetTitle("Delete")
-	action.Set(del, func(sender objc.Object) {
+	action.Set(del, func(_ objc.Object) {
 		utility.ShowAlert(nil, true, "Are you sure you want to delete this Command?",
 			"This operation is irreversible and will be deleted soon "+m.Name,
 			func(response appkit.ModalResponse) {
@@ -124,24 +140,17 @@ func (t *Command) getShellItem(id int64, m *store.Terminal) appkit.MenuItem {
 	return item
 }
 
-func (t *Command) getAddCmdItem() appkit.MenuItem {
-	item := appkit.NewMenuItem()
-	item.SetTitle("New Command")
-	action.Set(item, func(_ objc.Object) {
-		defaults := foundation.UserDefaults_StandardUserDefaults()
-		aaa := defaults.StringForKey("key")
-
-		dialog := appkit.NewAlert()
-		dialog.SetInformativeText(aaa)
-		dialog.SetMessageText("User Defaults")
-		dialog.SetAlertStyle(appkit.AlertStyleInformational)
-		dialog.RunModal()
-	})
-	return item
-}
-
-func (t *Command) showWindow(id int64, m *store.Terminal, title string, callback func(int64, *store.Terminal)) func(objc.Object) {
+func (t *Command) showWindow(id int64, m *store.Terminal, edit bool, title string, callback func(int64)) func(objc.Object) {
 	return func(sender objc.Object) {
+		fmt.Printf("editting: %#v\n", t.editting)
+		if _, ok := t.editting[id]; ok {
+			return
+		}
+
+		if edit {
+			t.editting[id] = struct{}{}
+		}
+
 		nameField := appkit.NewTextField()
 		nameField.SetBezelStyle(appkit.TextFieldRoundedBezel)
 		nameField.SetStringValue(m.Name)
@@ -178,9 +187,14 @@ func (t *Command) showWindow(id int64, m *store.Terminal, title string, callback
 		btn.SetTranslatesAutoresizingMaskIntoConstraints(false)
 		btn.SetBezelColor(appkit.Color_SystemBlueColor())
 		w := utility.NewWindow(title, view, func(w appkit.Window) {
+			delegate := &appkit.WindowDelegate{}
+			delegate.SetWindowWillClose(func(_ foundation.Notification) {
+				delete(t.editting, id)
+			})
+			w.SetDelegate(delegate)
 			w.SetStyleMask(w.StyleMask() | appkit.MiniaturizableWindowMask)
 		})
-		action.Set(btn, func(sender objc.Object) {
+		action.Set(btn, func(_ objc.Object) {
 			m.Name = nameField.StringValue()
 			if m.Name == "" {
 				utility.ShowAlert(w, false, "Name is empty!", "Must specify a name to save")
@@ -215,7 +229,7 @@ func (t *Command) showWindow(id int64, m *store.Terminal, title string, callback
 			}
 			w.Close()
 			if callback != nil {
-				callback(id, m)
+				callback(id)
 			}
 		})
 

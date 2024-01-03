@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"github.com/charliego3/tools/store"
-	"github.com/charliego3/tools/utility"
-	"github.com/progrium/macdriver/macos/appkit"
-	"github.com/progrium/macdriver/macos/foundation"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/charliego3/thub/store"
+	"github.com/charliego3/thub/utility"
+	"github.com/progrium/macdriver/macos/appkit"
+	"github.com/progrium/macdriver/macos/foundation"
 )
 
 type Kitty struct {
@@ -67,8 +68,9 @@ func (k *Kitty) Execute(m *store.Terminal) error {
 		}
 		doCmd(k.getCmdPrefix(fd) + " focus-window --match 'id:" + id + "'")
 		k.doScript(id, fd, m)
+	} else {
+		utility.ShowAlert(nil, false, "unsupport operation", "kitty listening type is unsupport")
 	}
-
 	return nil
 }
 
@@ -96,16 +98,6 @@ func (k *Kitty) getLastId(fd string) string {
 	tabs := wins[len(wins)-1].Tabs
 	tabWins := tabs[len(tabs)-1].Wins
 	return strconv.Itoa(tabWins[len(tabWins)-1].ID)
-}
-
-func (k *Kitty) getActiveWindow() string {
-	file := k.getListeningFd()
-	if len(file) == 0 {
-		return ""
-	}
-
-	doCmd("")
-	return ""
 }
 
 func (k *Kitty) getCmdPrefix(fd string) string {
@@ -149,9 +141,10 @@ func (k *Kitty) enableRemoteControl() bool {
 			"Do you need to turn on Kitty’s Remote Control function? It can only be used normally after it is turned on.",
 			func(alert appkit.Alert) {
 				delegate := &appkit.AlertDelegate{}
-				delegate.SetAlertShowHelp(func(alert appkit.Alert) bool {
+				delegate.SetAlertShowHelp(func(_ appkit.Alert) bool {
+					helpURL := "https://sw.kovidgoyal.net/kitty/remote-control/#control-kitty-from-scripts"
 					workspace := appkit.Workspace_SharedWorkspace()
-					workspace.OpenURL(foundation.URL_URLWithString("https://sw.kovidgoyal.net/kitty/remote-control/#control-kitty-from-scripts"))
+					workspace.OpenURL(foundation.URL_URLWithString(helpURL))
 					return true
 				})
 				alert.SetShowsHelp(true)

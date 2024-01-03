@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/charliego3/tools/utility"
+	"github.com/charliego3/thub/utility"
 	"github.com/progrium/macdriver/helper/action"
 	"github.com/progrium/macdriver/macos/appkit"
 	"github.com/progrium/macdriver/objc"

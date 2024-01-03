@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"github.com/charliego3/tools/store"
+	"github.com/charliego3/thub/store"
 	"testing"
 )
 

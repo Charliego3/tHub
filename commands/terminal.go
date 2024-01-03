@@ -2,10 +2,11 @@ package commands
 
 import (
 	"errors"
-	"github.com/charliego3/tools/store"
-	"github.com/progrium/macdriver/macos/foundation"
-	"github.com/progrium/macdriver/objc"
+	"fmt"
+	"os/exec"
 	"strings"
+
+	"github.com/charliego3/thub/store"
 )
 
 const (
@@ -51,13 +52,12 @@ func (a *Terminal) Enabled() bool {
 func (a *Terminal) Execute(m *store.Terminal) error {
 	length := len(m.Cmds)
 	if length == 0 {
-		return errors.New("There are no commands to execute")
+		return errors.New("there are no commands to execute")
 	}
 
 	inNewWindow := m.Window == 0
 	source := strings.Builder{}
 	source.WriteString(start)
-
 	if !inNewWindow {
 		source.WriteString(checkWindows)
 	}
@@ -75,12 +75,7 @@ func (a *Terminal) Execute(m *store.Terminal) error {
 		} else {
 			command += " in currentTab"
 		}
-		if i > 0 {
-			if inNewWindow {
-			} else {
-				command += ""
-			}
-		}
+
 		source.WriteString(command)
 		if length-1 != i {
 			if inNewWindow {
@@ -93,9 +88,20 @@ func (a *Terminal) Execute(m *store.Terminal) error {
 	source.WriteString(end)
 	//fmt.Println(source.String())
 
-	errInfo := make(map[string]objc.IObject)
-	script := foundation.NewAppleScriptWithSource(source.String())
-	script.ExecuteAndReturnError(errInfo)
+	// slog.Info("start execute osascript", "source", source.String())
+	err := exec.Command("osascript", "-s", "user:charlie", "-e", source.String()).Run()
+	fmt.Println(err)
+
+	// m.Window = 0
+	// activate(m, func() {
+	// 	errInfo := make(map[string]objc.IObject)
+	// 	script := foundation.NewAppleScriptWithSource(source.String())
+	// 	script.ExecuteAndReturnError(errInfo)
+	// })
+
+	// errInfo := make(map[string]objc.IObject)
+	// script := foundation.NewAppleScriptWithSource(source.String())
+	// script.ExecuteAndReturnError(errInfo)
 	//fmt.Printf("%+v", errInfo)
 	return nil
 }

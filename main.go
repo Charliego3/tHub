@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/charliego3/tools/commands"
-	"github.com/charliego3/tools/utility"
+	"runtime"
+
+	"github.com/charliego3/thub/commands"
+	"github.com/charliego3/thub/utility"
 	"github.com/progrium/macdriver/helper/action"
 	"github.com/progrium/macdriver/macos/appkit"
 	"github.com/progrium/macdriver/macos/foundation"
 	"github.com/progrium/macdriver/objc"
-	"runtime"
 )
 
 var MenuIcon string
@@ -21,7 +22,7 @@ func main() {
 	defer runtime.UnlockOSThread()
 	app := appkit.Application_SharedApplication()
 	delegate := &appkit.ApplicationDelegate{}
-	delegate.SetApplicationDidFinishLaunching(func(notification foundation.Notification) {
+	delegate.SetApplicationDidFinishLaunching(func(_ foundation.Notification) {
 		launched(app, delegate)
 	})
 	delegate.SetApplicationWillFinishLaunching(func(foundation.Notification) {
@@ -82,8 +83,8 @@ func getWebsite() appkit.MenuItem {
 	item := appkit.NewMenuItem()
 	item.SetTitle("Visit Website")
 	item.SetImage(utility.SymbolImage("safari"))
-	action.Set(item, func(sender objc.Object) {
-		url := foundation.URL_URLWithString("https://github.com/Charliego3/tools")
+	action.Set(item, func(_ objc.Object) {
+		url := foundation.URL_URLWithString("https://github.com/charliego3/thub")
 		workspace := appkit.Workspace_SharedWorkspace()
 		workspace.OpenURL(url)
 	})

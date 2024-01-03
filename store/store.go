@@ -37,7 +37,7 @@ func Fetch() *Option {
 			path = filepath.Join(home, ".config")
 		}
 
-		path = filepath.Join(path, "tools", "settings.json")
+		path = filepath.Join(path, "thub", "settings.json")
 		_, err := os.Stat(path)
 		instance = &Option{Terminals: make(map[int64]Terminal)}
 		if errors.Is(err, fs.ErrNotExist) {

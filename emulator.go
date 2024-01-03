@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/charliego3/tools/utility"
 	"os/exec"
+
+	"github.com/charliego3/thub/utility"
 
 	"github.com/progrium/macdriver/helper/action"
 	"github.com/progrium/macdriver/macos/appkit"
@@ -20,10 +21,10 @@ const (
 )
 
 func getEmulatorItem() appkit.MenuItem {
-	avds := getEmulatorList(executableName)
+	avdList := getEmulatorList(executableName)
 	item := appkit.NewMenuItem()
 	item.SetImage(utility.SymbolImage("iphone.smartbatterycase.gen2"))
-	if len(avds) == 0 {
+	if len(avdList) == 0 {
 		item.SetTitle("Setup emulator path")
 		target, selector := setEmulatorPath(item)
 		item.SetTarget(target)
@@ -31,7 +32,7 @@ func getEmulatorItem() appkit.MenuItem {
 		item.SetToolTip("Add emulator to the PATH environment variable or manually select the path of emulator")
 		return item
 	}
-	setEmulatorSubItem(item, avds)
+	setEmulatorSubItem(item, avdList)
 	return item
 }
 
@@ -121,6 +122,6 @@ func setEmulatorPath(item appkit.MenuItem) (action.Target, objc.Selector) {
 				setEmulatorSubItem(item, getEmulatorList(path))
 			}
 		})
-		panel.OrderFront(nil)
+		panel.OrderFront(sender)
 	})
 }

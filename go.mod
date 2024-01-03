@@ -1,4 +1,4 @@
-module github.com/charliego3/tools
+module github.com/charliego3/thub
 
 go 1.21.1
 

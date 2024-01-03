@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/charliego3/tools/utility"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/charliego3/thub/utility"
 
 	"github.com/progrium/macdriver/dispatch"
 	"github.com/progrium/macdriver/helper/action"
@@ -48,10 +49,10 @@ type generatePwdItem struct {
 	r      *rand.Rand
 }
 
-func getGeneratePasswordItem(menu appkit.StatusItem) *generatePwdItem {
+func getGeneratePasswordItem(_ appkit.StatusItem) *generatePwdItem {
 	item := appkit.NewMenuItem()
 	item.SetImage(utility.SymbolImage("key.fill"))
-	g := &generatePwdItem{MenuItem: item, length: 12}
+	g := &generatePwdItem{MenuItem: item, length: 20}
 	item.SetTitle("Generate Password")
 	item.SetAllowsKeyEquivalentWhenHidden(false)
 	item.SetKeyEquivalentModifierMask(appkit.EventModifierFlagCommand)
@@ -139,7 +140,7 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	okbtn.SetBezelStyle(appkit.BezelStyleRounded)
 	okbtn.SetBezelColor(appkit.Color_SystemBlueColor())
 	okbtn.SetTranslatesAutoresizingMaskIntoConstraints(false)
-	okTarget, okSelector := action.Wrap(func(sender objc.Object) {
+	okTarget, okSelector := action.Wrap(func(_ objc.Object) {
 		v := g.combox.StringValue()
 		if len(v) > 0 {
 			pasteboard := appkit.Pasteboard_GeneralPasteboard()
@@ -178,7 +179,7 @@ func (g *generatePwdItem) showGenerateWindow(_ objc.Object) {
 	g.gen(objc.Object{})
 
 	delegate := &appkit.WindowDelegate{}
-	delegate.SetWindowWillClose(func(notification foundation.Notification) {
+	delegate.SetWindowWillClose(func(_ foundation.Notification) {
 		g.w = appkit.Window{}
 		g.length = 12
 	})

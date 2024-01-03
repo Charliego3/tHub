@@ -2,8 +2,8 @@ package commands
 
 import (
 	"errors"
-	"github.com/charliego3/tools/store"
-	"github.com/charliego3/tools/utility"
+	"github.com/charliego3/thub/store"
+	"github.com/charliego3/thub/utility"
 	"github.com/progrium/macdriver/dispatch"
 	"github.com/progrium/macdriver/macos/appkit"
 	"github.com/progrium/macdriver/macos/foundation"
